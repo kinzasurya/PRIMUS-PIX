@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import httpx
-from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
@@ -16,7 +16,9 @@ from security import (
     list_local_inbox,
     load_admin_config,
     save_admin_config,
+    send_admin_magic_link_email,
     send_approval_email,
+    send_student_login_alert_email,
     send_test_gmail,
 )
 
@@ -58,7 +60,15 @@ def utc_now() -> str:
 
 def init_db() -> None:
     if USE_POSTGRES:
-        # Postgres schema is managed via Supabase migrations
+        # Postgres schema is managed via Supabase migrations; ensure new columns exist
+        conn = get_db()
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_message TEXT NOT NULL DEFAULT ''")
+            conn.commit()
+        except Exception:
+            pass
+        finally:
+            conn.close()
         return
     conn = get_db()
     cur = conn.cursor()
@@ -89,6 +99,15 @@ def init_db() -> None:
 
         CREATE TABLE IF NOT EXISTS admin_sessions (
             token TEXT PRIMARY KEY,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS admin_magic_links (
+            token TEXT PRIMARY KEY,
+            expires_at TEXT NOT NULL,
+            used INTEGER NOT NULL DEFAULT 0,
+            requested_ip TEXT NOT NULL DEFAULT '',
+            user_agent TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL
         );
 
@@ -268,6 +287,8 @@ def init_db() -> None:
         conn.execute(
             "UPDATE users SET is_verified = 1 WHERE id IN (SELECT DISTINCT user_id FROM sessions WHERE status = 'approved')"
         )
+    if "ban_message" not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN ban_message TEXT NOT NULL DEFAULT ''")
 
     st_cols = [r["name"] for r in conn.execute("PRAGMA table_info(stories)").fetchall()]
     if "audience" not in st_cols:
@@ -446,6 +467,7 @@ class CommentCreate(BaseModel):
 
 class BanRequest(BaseModel):
     is_banned: bool
+    ban_message: str = ""
 
 
 # ---------- Auth Helpers ----------
@@ -681,8 +703,15 @@ def serve_upload(filename: str):
 
 # ---------- Student Auth & Per-Session Verification ----------
 
+def _get_client_ip(request: Request) -> str:
+    fwd = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    if fwd:
+        return fwd
+    return request.client.host if request.client else "unknown"
+
+
 @app.post("/api/auth/login")
-def student_login(payload: LoginRequest, background_tasks: BackgroundTasks):
+def student_login(payload: LoginRequest, request: Request, background_tasks: BackgroundTasks):
     reg_number = payload.reg_number.strip().upper()
     name = payload.name.strip()
     class_name = payload.class_name.strip()
@@ -703,10 +732,20 @@ def student_login(payload: LoginRequest, background_tasks: BackgroundTasks):
         is_verified = False
         if user:
             if user["is_banned"]:
-                raise HTTPException(
-                    status_code=403,
-                    detail="This registration number has been banned by the administrator.",
-                )
+                ban_msg = (user["ban_message"] or "").strip() if "ban_message" in user.keys() else ""
+                return {
+                    "session_id": None,
+                    "token": None,
+                    "status": "banned",
+                    "ban_message": ban_msg,
+                    "user": {
+                        "id": user["id"],
+                        "reg_number": user["reg_number"],
+                        "name": (user["display_name"] or "").strip() or user["name"],
+                        "registered_name": user["name"],
+                        "class_name": user["class_name"],
+                    },
+                }
             user_id = user["id"]
             is_verified = bool(user["is_verified"])
             conn.execute(
@@ -767,6 +806,14 @@ def student_login(payload: LoginRequest, background_tasks: BackgroundTasks):
             )
         else:
             conn.commit()
+            background_tasks.add_task(
+                send_student_login_alert_email,
+                reg_number,
+                name,
+                class_name,
+                _get_client_ip(request),
+                now,
+            )
 
         return {
             "session_id": session_id,
@@ -867,6 +914,7 @@ def check_session(x_session_token: Optional[str] = Header(default=None)):
             """
             SELECT s.id AS session_id, s.status, s.created_at, s.decided_at,
                    u.id AS user_id, u.reg_number, u.name, u.class_name, u.is_banned,
+                   COALESCE(u.ban_message, '') AS ban_message,
                    COALESCE(NULLIF(u.display_name, ''), u.name) AS display_name,
                    u.display_name_changed_at, u.bio, u.avatar_url
             FROM sessions s
@@ -882,6 +930,7 @@ def check_session(x_session_token: Optional[str] = Header(default=None)):
         return {
             "session_id": row["session_id"],
             "status": status,
+            "ban_message": (row["ban_message"] or "").strip(),
             "created_at": row["created_at"],
             "decided_at": row["decided_at"],
             "user": {
@@ -1999,21 +2048,158 @@ def gamification_leaderboard(user=Depends(require_approved_user)):
 
 # ---------- Admin Authentication & Moderation ----------
 
+def _ensure_admin_magic_links_table(conn) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS admin_magic_links (
+            token TEXT PRIMARY KEY,
+            expires_at TEXT NOT NULL,
+            used INTEGER NOT NULL DEFAULT 0,
+            requested_ip TEXT NOT NULL DEFAULT '',
+            user_agent TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+
+
 @app.post("/api/admin/login")
 def admin_login(payload: AdminLoginRequest):
-    if not secrets.compare_digest(payload.password, ADMIN_PASSWORD):
-        raise HTTPException(status_code=401, detail="Incorrect admin password.")
-    token = secrets.token_urlsafe(32)
+    raise HTTPException(
+        status_code=403,
+        detail="Password login is disabled. Request a one-time Admin Access Link via email instead.",
+    )
+
+
+@app.post("/api/admin/request-link")
+def admin_request_magic_link(request: Request):
+    now_dt = datetime.now(timezone.utc)
+    now = now_dt.isoformat()
+    expires_at = (now_dt + timedelta(minutes=10)).isoformat()
+    magic_token = secrets.token_urlsafe(32)
+    client_ip = _get_client_ip(request)
+    user_agent = (request.headers.get("user-agent") or "Unknown")[:200]
+
     conn = get_db()
     try:
+        _ensure_admin_magic_links_table(conn)
         conn.execute(
-            "INSERT INTO admin_sessions (token, created_at) VALUES (?, ?)",
-            (token, utc_now()),
+            """
+            INSERT INTO admin_magic_links (token, expires_at, used, requested_ip, user_agent, created_at)
+            VALUES (?, ?, 0, ?, ?, ?)
+            """,
+            (magic_token, expires_at, client_ip, user_agent, now),
         )
         conn.commit()
-        return {"admin_token": token}
     finally:
         conn.close()
+
+    cfg = load_admin_config()
+    req_base = str(request.base_url).rstrip("/")
+    configured_base = (cfg.get("app_base_url") or "").strip().rstrip("/")
+    # Use the active request origin on localhost/LAN so local testing links always open locally;
+    # otherwise use configured APP_BASE_URL (e.g. Railway HTTPS URL).
+    if "127.0.0.1" in req_base or "localhost" in req_base or req_base.startswith("http://192.168."):
+        base_url = req_base
+    else:
+        base_url = configured_base or req_base
+
+    magic_url = f"{base_url}/admin/magic-login?token={magic_token}"
+    record = send_admin_magic_link_email(
+        magic_url=magic_url,
+        requested_ip=client_ip,
+        user_agent=user_agent,
+        requested_at=now,
+    )
+    return {
+        "ok": True,
+        "delivery": record.get("delivery"),
+        "email_mode": (cfg.get("email_mode") or "mailpit").strip().lower(),
+        "message": "One-time Admin Access Link sent to the admin email! Open your email and click the link within 10 minutes.",
+    }
+
+
+@app.get("/admin/magic-login", response_class=HTMLResponse)
+def admin_magic_login(token: str = ""):
+    def _error_page(title: str, subtitle: str) -> HTMLResponse:
+        return HTMLResponse(
+            status_code=400,
+            content=f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Primus Pix — {title}</title>
+  <style>
+    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #fdf2f8; color: #1e293b; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }}
+    .card {{ background: #ffffff; border: 2px solid #f472b6; border-radius: 18px; padding: 28px; max-width: 440px; text-align: center; box-shadow: 0 12px 30px rgba(244,114,182,0.18); }}
+    h1 {{ margin: 0 0 10px; font-size: 22px; color: #be185d; }}
+    p {{ margin: 0 0 20px; color: #475569; font-size: 14px; line-height: 1.5; }}
+    a {{ display: inline-block; background: #f472b6; color: #fff; text-decoration: none; font-weight: 700; padding: 11px 22px; border-radius: 10px; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>{title}</h1>
+    <p>{subtitle}</p>
+    <a href="/">Back to Primus Pix</a>
+  </div>
+</body>
+</html>""",
+        )
+
+    clean_token = (token or "").strip()
+    if not clean_token:
+        return _error_page("Missing Access Link", "This admin login link is incomplete. Please request a new link from Primus Pix.")
+
+    conn = get_db()
+    try:
+        _ensure_admin_magic_links_table(conn)
+        row = conn.execute(
+            "SELECT * FROM admin_magic_links WHERE token = ?",
+            (clean_token,),
+        ).fetchone()
+        if not row:
+            return _error_page("Invalid Access Link", "This admin link is not valid. Please request a fresh link.")
+        if row["used"]:
+            return _error_page("Link Already Used", "For your security, each Admin Access Link can only be used once. Request a new link to sign in again.")
+        if datetime.now(timezone.utc) > datetime.fromisoformat(row["expires_at"]):
+            return _error_page("Link Expired", "This Admin Access Link has expired (10-minute limit). Please request a new link.")
+
+        conn.execute("UPDATE admin_magic_links SET used = 1 WHERE token = ?", (clean_token,))
+        admin_token = secrets.token_urlsafe(32)
+        conn.execute(
+            "INSERT INTO admin_sessions (token, created_at) VALUES (?, ?)",
+            (admin_token, utc_now()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return HTMLResponse(
+        content=f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Opening Primus Pix Admin...</title>
+  <style>
+    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #eff6ff; color: #1e293b; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }}
+    .card {{ background: #fff; border: 2px solid #93c5fd; border-radius: 16px; padding: 24px 28px; text-align: center; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Admin Verified</h2>
+    <p>Opening Primus Pix Admin Panel...</p>
+  </div>
+  <script>
+    localStorage.setItem("cp_admin_token", "{admin_token}");
+    window.location.replace("/?admin=1");
+  </script>
+</body>
+</html>""",
+    )
 
 
 @app.get("/api/admin/settings")
@@ -2091,7 +2277,8 @@ def admin_overview(_=Depends(require_admin)):
 
         users = conn.execute(
             """
-            SELECT u.id, u.reg_number, u.name, u.class_name, u.is_banned, u.created_at,
+            SELECT u.id, u.reg_number, u.name, u.class_name, u.is_banned,
+                   COALESCE(u.ban_message, '') AS ban_message, u.created_at,
                    (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) AS post_count,
                    (SELECT COUNT(*) FROM sessions s WHERE s.user_id = u.id AND s.status = 'approved') AS active_sessions
             FROM users u
@@ -2393,10 +2580,11 @@ def admin_toggle_ban(user_id: int, payload: BanRequest, _=Depends(require_admin)
         if not row:
             raise HTTPException(status_code=404, detail="Student not found.")
         is_banned_int = 1 if payload.is_banned else 0
+        ban_msg = payload.ban_message.strip()[:500] if payload.is_banned else ""
         now = utc_now()
         conn.execute(
-            "UPDATE users SET is_banned = ?, updated_at = ? WHERE id = ?",
-            (is_banned_int, now, user_id),
+            "UPDATE users SET is_banned = ?, ban_message = ?, updated_at = ? WHERE id = ?",
+            (is_banned_int, ban_msg, now, user_id),
         )
         if payload.is_banned:
             conn.execute(
@@ -2404,9 +2592,55 @@ def admin_toggle_ban(user_id: int, payload: BanRequest, _=Depends(require_admin)
                 (now, user_id),
             )
         conn.commit()
-        return {"ok": True, "is_banned": payload.is_banned}
+        return {"ok": True, "is_banned": payload.is_banned, "ban_message": ban_msg}
     finally:
         conn.close()
+
+
+@app.delete("/api/admin/users/{user_id}")
+def admin_remove_user(user_id: int, _=Depends(require_admin)):
+    conn = get_db()
+    media_urls: list[str] = []
+    try:
+        user_row = conn.execute("SELECT id, avatar_url FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not user_row:
+            raise HTTPException(status_code=404, detail="Student not found.")
+        if user_row["avatar_url"]:
+            media_urls.append(user_row["avatar_url"])
+
+        for r in conn.execute("SELECT media_url FROM posts WHERE user_id = ?", (user_id,)).fetchall():
+            if r["media_url"]:
+                media_urls.append(r["media_url"])
+        for r in conn.execute("SELECT media_url FROM stories WHERE user_id = ?", (user_id,)).fetchall():
+            if r["media_url"]:
+                media_urls.append(r["media_url"])
+        for r in conn.execute("SELECT media_url FROM flashes WHERE user_id = ?", (user_id,)).fetchall():
+            if r["media_url"]:
+                media_urls.append(r["media_url"])
+
+        # Remove dependent records explicitly as well as relying on ON DELETE CASCADE
+        conn.execute("DELETE FROM email_action_tokens WHERE session_id IN (SELECT id FROM sessions WHERE user_id = ?)", (user_id,))
+        conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM likes WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM comments WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM story_views WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM story_likes WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM story_comments WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM close_friends WHERE user_id = ? OR friend_id = ?", (user_id, user_id))
+        conn.execute("DELETE FROM poll_votes WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM reactions WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM xp_events WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM flashes WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM stories WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM posts WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+    for url in media_urls:
+        _cleanup_media_file(url)
+    return {"ok": True, "deleted_user_id": user_id}
 
 
 @app.delete("/api/admin/posts/{post_id}")
