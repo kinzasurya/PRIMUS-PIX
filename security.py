@@ -267,6 +267,144 @@ def send_approval_email(
     return email_record
 
 
+def _deliver_email(subject: str, text_body: str, html_body: str) -> tuple[str, Optional[str]]:
+    cfg = load_admin_config()
+    email_mode = (cfg.get("email_mode") or "mailpit").strip().lower()
+    smtp_host = (cfg.get("smtp_host") or "127.0.0.1").strip()
+    smtp_port = int(cfg.get("smtp_port") or 1025)
+    gmail_user = (cfg.get("gmail_user") or "").strip()
+    gmail_pass = (cfg.get("gmail_app_password") or "").replace(" ", "").strip()
+    admin_email = (cfg.get("admin_email") or gmail_user or "admin@primuspix.local").strip()
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = gmail_user or "noreply@primuspix.local"
+    msg["To"] = admin_email
+    msg.attach(MIMEText(text_body, "plain"))
+    msg.attach(MIMEText(html_body, "html"))
+
+    if email_mode == "mailpit":
+        try:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=5) as server:
+                server.sendmail(msg["From"], [admin_email], msg.as_string())
+            return f"mailpit ({smtp_host}:{smtp_port})", None
+        except Exception as exc:
+            return "local_inbox (mailpit not running)", str(exc)
+    elif gmail_user and gmail_pass and admin_email:
+        try:
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+                server.login(gmail_user, gmail_pass)
+                server.sendmail(gmail_user, [admin_email], msg.as_string())
+            return f"gmail ({admin_email})", None
+        except Exception as exc:
+            return "local_inbox (gmail failed)", str(exc)
+    return "local_inbox (gmail not configured)", "Gmail credentials not configured"
+
+
+def send_admin_magic_link_email(
+    magic_url: str,
+    requested_ip: str,
+    user_agent: str,
+    requested_at: str,
+) -> dict:
+    subject = "[Primus Pix] Admin Panel Access Request (One-Time Link)"
+    safe_ua = (user_agent or "Unknown browser")[:140]
+    html_body = f"""<!DOCTYPE html>
+<html>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0b0f19;color:#f1f5f9;padding:24px;margin:0;">
+  <div style="max-width:520px;margin:0 auto;background:#161d31;border:1px solid #2b3552;border-radius:16px;padding:26px;">
+    <h2 style="margin:0 0 8px;color:#ffffff;">Admin Panel Login Attempt</h2>
+    <p style="margin:0 0 18px;color:#94a3b8;font-size:14px;">
+      Someone requested access to the <strong>Primus Pix Admin Panel</strong>. Click the button below to open it.
+      This link expires in <strong>10 minutes</strong> and works <strong>only once</strong>.
+    </p>
+    <table style="width:100%;border-collapse:collapse;background:#0e1424;border-radius:10px;margin-bottom:22px;">
+      <tr><td style="padding:10px 14px;color:#94a3b8;font-size:13px;">Requested At</td><td style="padding:10px 14px;color:#fff;font-size:13px;">{requested_at}</td></tr>
+      <tr><td style="padding:10px 14px;color:#94a3b8;font-size:13px;">IP Address</td><td style="padding:10px 14px;font-weight:700;color:#fff;">{requested_ip}</td></tr>
+      <tr><td style="padding:10px 14px;color:#94a3b8;font-size:13px;">Device</td><td style="padding:10px 14px;color:#cbd5e1;font-size:12px;">{safe_ua}</td></tr>
+    </table>
+    <div style="text-align:center;margin-bottom:18px;">
+      <a href="{magic_url}" style="display:inline-block;background:#f472b6;color:#ffffff;font-weight:700;text-decoration:none;padding:13px 28px;border-radius:10px;font-size:15px;">
+        Open Primus Pix Admin Panel
+      </a>
+    </div>
+    <p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;">
+      Didn't request this? Ignore this email — nobody can enter the Admin Panel without clicking this link.
+    </p>
+  </div>
+</body>
+</html>"""
+    text_body = (
+        f"Primus Pix Admin Panel Login Attempt\n"
+        f"Requested At: {requested_at}\n"
+        f"IP Address: {requested_ip}\n"
+        f"Device: {safe_ua}\n\n"
+        f"Open Admin Panel (one-time link, expires in 10 min):\n{magic_url}\n\n"
+        f"If you did not request this, ignore this email."
+    )
+    delivery, err = _deliver_email(subject, text_body, html_body)
+    record = {
+        "type": "admin_magic_link",
+        "subject": subject,
+        "requested_ip": requested_ip,
+        "user_agent": safe_ua,
+        "created_at": requested_at,
+        "delivery": delivery,
+        "error": err,
+    }
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    (LOCAL_INBOX_DIR / f"{ts}_admin_link.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
+    return record
+
+
+def send_student_login_alert_email(
+    reg_number: str,
+    name: str,
+    class_name: str,
+    requested_ip: str,
+    requested_at: str,
+) -> dict:
+    subject = f"[Primus Pix] Student Sign-In Alert: {name} ({reg_number})"
+    html_body = f"""<!DOCTYPE html>
+<html>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0b0f19;color:#f1f5f9;padding:24px;margin:0;">
+  <div style="max-width:520px;margin:0 auto;background:#161d31;border:1px solid #2b3552;border-radius:16px;padding:26px;">
+    <h2 style="margin:0 0 8px;color:#ffffff;">Student Sign-In Notification</h2>
+    <p style="margin:0 0 18px;color:#94a3b8;font-size:14px;">
+      A verified student just signed in to <strong>Primus Pix</strong>.
+    </p>
+    <table style="width:100%;border-collapse:collapse;background:#0e1424;border-radius:10px;">
+      <tr><td style="padding:10px 14px;color:#94a3b8;font-size:13px;">Registration No</td><td style="padding:10px 14px;font-weight:700;color:#fff;">{reg_number}</td></tr>
+      <tr><td style="padding:10px 14px;color:#94a3b8;font-size:13px;">Full Name</td><td style="padding:10px 14px;font-weight:700;color:#fff;">{name}</td></tr>
+      <tr><td style="padding:10px 14px;color:#94a3b8;font-size:13px;">Class</td><td style="padding:10px 14px;font-weight:700;color:#fff;">{class_name}</td></tr>
+      <tr><td style="padding:10px 14px;color:#94a3b8;font-size:13px;">IP Address</td><td style="padding:10px 14px;color:#cbd5e1;font-size:13px;">{requested_ip}</td></tr>
+      <tr><td style="padding:10px 14px;color:#94a3b8;font-size:13px;">Signed In At</td><td style="padding:10px 14px;color:#cbd5e1;font-size:13px;">{requested_at}</td></tr>
+    </table>
+  </div>
+</body>
+</html>"""
+    text_body = (
+        f"Primus Pix Student Sign-In Alert\n"
+        f"Reg No: {reg_number}\nName: {name}\nClass: {class_name}\n"
+        f"IP: {requested_ip}\nTime: {requested_at}\n"
+    )
+    delivery, err = _deliver_email(subject, text_body, html_body)
+    record = {
+        "type": "student_login_alert",
+        "subject": subject,
+        "reg_number": reg_number,
+        "name": name,
+        "class_name": class_name,
+        "requested_ip": requested_ip,
+        "created_at": requested_at,
+        "delivery": delivery,
+        "error": err,
+    }
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    (LOCAL_INBOX_DIR / f"{ts}_signin_{reg_number}.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
+    return record
+
+
 def list_local_inbox(limit: int = 30) -> list[dict]:
     files = sorted(LOCAL_INBOX_DIR.glob("*.json"), reverse=True)[:limit]
     items = []
