@@ -174,7 +174,7 @@
       } else if (info.status === "pending") {
         enterPendingView("pending");
       } else {
-        enterPendingView(info.status);
+        enterPendingView(info.status, info.ban_message || "");
       }
     } catch {
       clearStudentSession();
@@ -191,7 +191,7 @@
 
   // ---------- Pending / Denied View ----------
 
-  function enterPendingView(status) {
+  function enterPendingView(status, banMessage = "") {
     stopTimers();
     showOnly("view-pending");
 
@@ -203,6 +203,9 @@
     const icon = $("pending-icon");
     const title = $("pending-title");
     const desc = $("pending-desc");
+    const blockBox = $("pending-block-msg-box");
+    const blockText = $("pending-block-msg-text");
+    if (blockBox) blockBox.classList.add("hidden");
 
     if (status === "pending") {
       icon.className = "status-icon pending";
@@ -226,9 +229,13 @@
       $("check-status-btn").classList.add("hidden");
     } else if (status === "banned") {
       icon.className = "status-icon denied";
-      icon.textContent = "!";
-      title.textContent = "Account Banned";
-      desc.textContent = "Your registration number has been banned by the administrator.";
+      icon.textContent = "⛔";
+      title.textContent = "Account Blocked";
+      desc.textContent = "Your account has been blocked by the administrator.";
+      if (blockBox && blockText && banMessage && banMessage.trim()) {
+        blockText.textContent = banMessage.trim();
+        blockBox.classList.remove("hidden");
+      }
       $("check-status-btn").classList.add("hidden");
     } else {
       clearStudentSession();
@@ -246,7 +253,7 @@
         toast("Sign-in approved! Welcome to Primus Pix.", "success");
         enterStudentApp();
       } else if (info.status !== "pending") {
-        enterPendingView(info.status);
+        enterPendingView(info.status, info.ban_message || "");
       } else if (manual) {
         toast("Still waiting for admin verification.");
       }
@@ -278,8 +285,8 @@
       try {
         const info = await api("/api/auth/session", { auth: "student" });
         if (info.status !== "approved") {
-          toast("Your session is no longer active.", "error");
-          enterPendingView(info.status);
+          toast(info.status === "banned" ? "Your account has been blocked." : "Your session is no longer active.", "error");
+          enterPendingView(info.status, info.ban_message || "");
         }
       } catch {
         clearStudentSession();
@@ -1606,19 +1613,28 @@
                 <div class="admin-row-main">
                   <div class="admin-row-title">
                     <span>${escapeHtml(u.name)}</span>
-                    ${u.is_banned ? `<span class="status-pill banned">Banned</span>` : `<span class="status-pill approved">Active</span>`}
+                    ${u.is_banned ? `<span class="status-pill banned">Blocked</span>` : `<span class="status-pill approved">Active</span>`}
                   </div>
                   <div class="admin-row-sub">
                     Reg No: <strong>${escapeHtml(u.reg_number)}</strong> &bull;
                     ${u.post_count} post(s) &bull; ${u.active_sessions} active session(s)
                   </div>
+                  ${
+                    u.is_banned && u.ban_message
+                      ? `<div class="admin-row-sub" style="margin-top:4px;color:#be123c;font-weight:600;">Block note: "${escapeHtml(u.ban_message)}"</div>`
+                      : ""
+                  }
                 </div>
-                <div class="admin-row-actions">
+                <div class="admin-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;">
                   ${
                     u.is_banned
-                      ? `<button type="button" class="btn btn-success btn-sm" data-adm-ban="${u.id}" data-ban-val="false">Unban</button>`
-                      : `<button type="button" class="btn btn-danger btn-sm" data-adm-ban="${u.id}" data-ban-val="true">Ban Student</button>`
+                      ? `
+                        <button type="button" class="btn btn-secondary btn-sm" data-adm-block-open="${u.id}">Edit Message</button>
+                        <button type="button" class="btn btn-success btn-sm" data-adm-ban="${u.id}" data-ban-val="false">Unblock</button>
+                      `
+                      : `<button type="button" class="btn btn-danger btn-sm" data-adm-block-open="${u.id}">Block</button>`
                   }
+                  <button type="button" class="btn btn-danger-ghost btn-sm" data-adm-remove-user="${u.id}" data-user-name="${escapeHtml(u.name)}">Remove</button>
                 </div>
               </div>
             `
@@ -1822,14 +1838,23 @@
           class_name: $("login-class").value,
         },
       });
-      state.sessionToken = data.token;
-      state.currentUser = data.user;
-      state.sessionStatus = data.status;
-      localStorage.setItem(LS_SESSION, data.token);
-      if (data.status === "approved") {
+      if (data.status === "banned") {
+        clearStudentSession();
+        state.currentUser = data.user;
+        state.sessionStatus = "banned";
+        enterPendingView("banned", data.ban_message || "");
+      } else if (data.status === "approved") {
+        state.sessionToken = data.token;
+        state.currentUser = data.user;
+        state.sessionStatus = data.status;
+        localStorage.setItem(LS_SESSION, data.token);
         toast("Welcome back to Primus Pix!", "success");
         enterStudentApp();
       } else {
+        state.sessionToken = data.token;
+        state.currentUser = data.user;
+        state.sessionStatus = data.status;
+        localStorage.setItem(LS_SESSION, data.token);
         toast("Sign-in request submitted! Waiting for admin approval.", "success");
         enterPendingView("pending");
       }
@@ -1936,11 +1961,57 @@
     });
   });
 
+  let pendingBlockUserId = null;
+
+  function openBlockUserModal(userId) {
+    const users = (state.adminOverview && state.adminOverview.users) || [];
+    const u = users.find((x) => Number(x.id) === Number(userId));
+    pendingBlockUserId = Number(userId);
+    const isAlreadyBlocked = Boolean(u && u.is_banned);
+    $("block-user-modal-title").textContent = isAlreadyBlocked
+      ? `Edit Block Message — ${u.name}`
+      : `Block ${u ? u.name : "Student"}`;
+    $("block-user-subtitle").textContent = u
+      ? `Write a message to show on ${u.name} (${u.reg_number})'s Blocked page (e.g., how many days they are blocked or the reason).`
+      : "Write a message to show on this student's Blocked page.";
+    $("block-user-message").value = (u && u.ban_message) || "";
+    $("confirm-block-user-btn").textContent = isAlreadyBlocked ? "Save Block Message" : "Block Student";
+    $("modal-block-user").classList.remove("hidden");
+    $("block-user-message").focus();
+  }
+
+  function closeBlockUserModal() {
+    pendingBlockUserId = null;
+    $("modal-block-user").classList.add("hidden");
+  }
+
+  $("close-block-user").addEventListener("click", closeBlockUserModal);
+  $("cancel-block-user").addEventListener("click", closeBlockUserModal);
+  $("block-user-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!pendingBlockUserId) return;
+    const msg = $("block-user-message").value.trim();
+    try {
+      await api(`/api/admin/users/${pendingBlockUserId}/ban`, {
+        method: "POST",
+        auth: "admin",
+        json: { is_banned: true, ban_message: msg },
+      });
+      closeBlockUserModal();
+      toast("Student blocked and sessions revoked.", "error");
+      refreshAdminData();
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  });
+
   $("admin-tab-content").addEventListener("click", async (e) => {
     const approveBtn = e.target.closest("[data-adm-approve]");
     const denyBtn = e.target.closest("[data-adm-deny]");
     const revokeBtn = e.target.closest("[data-adm-revoke]");
     const banBtn = e.target.closest("[data-adm-ban]");
+    const blockOpenBtn = e.target.closest("[data-adm-block-open]");
+    const removeUserBtn = e.target.closest("[data-adm-remove-user]");
     const delPostBtn = e.target.closest("[data-adm-del-post]");
     const editNoticeBtn = e.target.closest("[data-adm-edit-notice]");
     const delNoticeBtn = e.target.closest("[data-adm-del-notice]");
@@ -1977,14 +2048,25 @@
         await api(`/api/admin/sessions/${revokeBtn.dataset.admRevoke}/revoke`, { method: "POST", auth: "admin" });
         toast("Session revoked.");
         refreshAdminData();
+      } else if (blockOpenBtn) {
+        openBlockUserModal(blockOpenBtn.dataset.admBlockOpen);
+      } else if (removeUserBtn) {
+        const uid = removeUserBtn.dataset.admRemoveUser;
+        const uname = removeUserBtn.dataset.userName || "this student";
+        if (!window.confirm(`Permanently remove ${uname} and all their posts, stories, and sessions? This cannot be undone.`)) {
+          return;
+        }
+        await api(`/api/admin/users/${uid}`, { method: "DELETE", auth: "admin" });
+        toast(`${uname} has been removed.`, "success");
+        refreshAdminData();
       } else if (banBtn) {
         const isBanned = banBtn.dataset.banVal === "true";
         await api(`/api/admin/users/${banBtn.dataset.admBan}/ban`, {
           method: "POST",
           auth: "admin",
-          json: { is_banned: isBanned },
+          json: { is_banned: isBanned, ban_message: "" },
         });
-        toast(isBanned ? "Student banned and sessions revoked." : "Student unbanned.", isBanned ? "error" : "success");
+        toast(isBanned ? "Student blocked and sessions revoked." : "Student unblocked.", isBanned ? "error" : "success");
         refreshAdminData();
       } else if (delPostBtn) {
         await api(`/api/admin/posts/${delPostBtn.dataset.admDelPost}`, { method: "DELETE", auth: "admin" });

@@ -119,6 +119,11 @@
         Your sign-in request has been sent to the administrator. This page will unlock automatically once you are allowed in.
       </p>
 
+      <div id="pending-block-msg-box" class="hidden" style="margin:14px 0 18px;padding:14px 16px;border-radius:12px;background:#fff1f2;border:2px solid #fda4af;color:#9f1239;text-align:left;">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;color:#be123c;">Message from Admin</div>
+        <div id="pending-block-msg-text" style="font-size:14px;font-weight:600;line-height:1.45;white-space:pre-wrap;"></div>
+      </div>
+
       <div class="identity-pill-box">
         <div><span class="meta-label">Reg No</span><strong id="pending-reg">—</strong></div>
         <div><span class="meta-label">Name</span><strong id="pending-name">—</strong></div>
@@ -403,6 +408,29 @@
           <input id="admin-password" type="password" placeholder="Default: admin123" required />
         </div>
         <button type="submit" class="btn btn-primary btn-full">Unlock Admin Panel</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========== MODAL: BLOCK USER WITH CUSTOM MESSAGE ========== -->
+  <div id="modal-block-user" class="modal-backdrop hidden">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h3 id="block-user-modal-title">Block Student</h3>
+        <button type="button" class="icon-btn" id="close-block-user">&times;</button>
+      </div>
+      <form id="block-user-form" class="form-stack">
+        <p class="muted small" id="block-user-subtitle">
+          Write a message to show on this student's Blocked page (for example, how many days they are blocked or the reason).
+        </p>
+        <div class="field">
+          <label for="block-user-message">Message on Blocked Page (optional)</label>
+          <textarea id="block-user-message" rows="3" maxlength="500" placeholder="e.g., You are blocked for 3 days for breaking campus rules."></textarea>
+        </div>
+        <div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end;">
+          <button type="button" class="btn btn-ghost" id="cancel-block-user">Cancel</button>
+          <button type="submit" class="btn btn-danger" id="confirm-block-user-btn">Block Student</button>
+        </div>
       </form>
     </div>
   </div>

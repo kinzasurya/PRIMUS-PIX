@@ -58,7 +58,15 @@ def utc_now() -> str:
 
 def init_db() -> None:
     if USE_POSTGRES:
-        # Postgres schema is managed via Supabase migrations
+        # Postgres schema is managed via Supabase migrations; ensure new columns exist
+        conn = get_db()
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_message TEXT NOT NULL DEFAULT ''")
+            conn.commit()
+        except Exception:
+            pass
+        finally:
+            conn.close()
         return
     conn = get_db()
     cur = conn.cursor()
@@ -268,6 +276,8 @@ def init_db() -> None:
         conn.execute(
             "UPDATE users SET is_verified = 1 WHERE id IN (SELECT DISTINCT user_id FROM sessions WHERE status = 'approved')"
         )
+    if "ban_message" not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN ban_message TEXT NOT NULL DEFAULT ''")
 
     st_cols = [r["name"] for r in conn.execute("PRAGMA table_info(stories)").fetchall()]
     if "audience" not in st_cols:
@@ -446,6 +456,7 @@ class CommentCreate(BaseModel):
 
 class BanRequest(BaseModel):
     is_banned: bool
+    ban_message: str = ""
 
 
 # ---------- Auth Helpers ----------
@@ -703,10 +714,20 @@ def student_login(payload: LoginRequest, background_tasks: BackgroundTasks):
         is_verified = False
         if user:
             if user["is_banned"]:
-                raise HTTPException(
-                    status_code=403,
-                    detail="This registration number has been banned by the administrator.",
-                )
+                ban_msg = (user["ban_message"] or "").strip() if "ban_message" in user.keys() else ""
+                return {
+                    "session_id": None,
+                    "token": None,
+                    "status": "banned",
+                    "ban_message": ban_msg,
+                    "user": {
+                        "id": user["id"],
+                        "reg_number": user["reg_number"],
+                        "name": (user["display_name"] or "").strip() or user["name"],
+                        "registered_name": user["name"],
+                        "class_name": user["class_name"],
+                    },
+                }
             user_id = user["id"]
             is_verified = bool(user["is_verified"])
             conn.execute(
@@ -867,6 +888,7 @@ def check_session(x_session_token: Optional[str] = Header(default=None)):
             """
             SELECT s.id AS session_id, s.status, s.created_at, s.decided_at,
                    u.id AS user_id, u.reg_number, u.name, u.class_name, u.is_banned,
+                   COALESCE(u.ban_message, '') AS ban_message,
                    COALESCE(NULLIF(u.display_name, ''), u.name) AS display_name,
                    u.display_name_changed_at, u.bio, u.avatar_url
             FROM sessions s
@@ -882,6 +904,7 @@ def check_session(x_session_token: Optional[str] = Header(default=None)):
         return {
             "session_id": row["session_id"],
             "status": status,
+            "ban_message": (row["ban_message"] or "").strip(),
             "created_at": row["created_at"],
             "decided_at": row["decided_at"],
             "user": {
@@ -2091,7 +2114,8 @@ def admin_overview(_=Depends(require_admin)):
 
         users = conn.execute(
             """
-            SELECT u.id, u.reg_number, u.name, u.class_name, u.is_banned, u.created_at,
+            SELECT u.id, u.reg_number, u.name, u.class_name, u.is_banned,
+                   COALESCE(u.ban_message, '') AS ban_message, u.created_at,
                    (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) AS post_count,
                    (SELECT COUNT(*) FROM sessions s WHERE s.user_id = u.id AND s.status = 'approved') AS active_sessions
             FROM users u
@@ -2393,10 +2417,11 @@ def admin_toggle_ban(user_id: int, payload: BanRequest, _=Depends(require_admin)
         if not row:
             raise HTTPException(status_code=404, detail="Student not found.")
         is_banned_int = 1 if payload.is_banned else 0
+        ban_msg = payload.ban_message.strip()[:500] if payload.is_banned else ""
         now = utc_now()
         conn.execute(
-            "UPDATE users SET is_banned = ?, updated_at = ? WHERE id = ?",
-            (is_banned_int, now, user_id),
+            "UPDATE users SET is_banned = ?, ban_message = ?, updated_at = ? WHERE id = ?",
+            (is_banned_int, ban_msg, now, user_id),
         )
         if payload.is_banned:
             conn.execute(
@@ -2404,9 +2429,55 @@ def admin_toggle_ban(user_id: int, payload: BanRequest, _=Depends(require_admin)
                 (now, user_id),
             )
         conn.commit()
-        return {"ok": True, "is_banned": payload.is_banned}
+        return {"ok": True, "is_banned": payload.is_banned, "ban_message": ban_msg}
     finally:
         conn.close()
+
+
+@app.delete("/api/admin/users/{user_id}")
+def admin_remove_user(user_id: int, _=Depends(require_admin)):
+    conn = get_db()
+    media_urls: list[str] = []
+    try:
+        user_row = conn.execute("SELECT id, avatar_url FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not user_row:
+            raise HTTPException(status_code=404, detail="Student not found.")
+        if user_row["avatar_url"]:
+            media_urls.append(user_row["avatar_url"])
+
+        for r in conn.execute("SELECT media_url FROM posts WHERE user_id = ?", (user_id,)).fetchall():
+            if r["media_url"]:
+                media_urls.append(r["media_url"])
+        for r in conn.execute("SELECT media_url FROM stories WHERE user_id = ?", (user_id,)).fetchall():
+            if r["media_url"]:
+                media_urls.append(r["media_url"])
+        for r in conn.execute("SELECT media_url FROM flashes WHERE user_id = ?", (user_id,)).fetchall():
+            if r["media_url"]:
+                media_urls.append(r["media_url"])
+
+        # Remove dependent records explicitly as well as relying on ON DELETE CASCADE
+        conn.execute("DELETE FROM email_action_tokens WHERE session_id IN (SELECT id FROM sessions WHERE user_id = ?)", (user_id,))
+        conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM likes WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM comments WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM story_views WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM story_likes WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM story_comments WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM close_friends WHERE user_id = ? OR friend_id = ?", (user_id, user_id))
+        conn.execute("DELETE FROM poll_votes WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM reactions WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM xp_events WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM flashes WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM stories WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM posts WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+    for url in media_urls:
+        _cleanup_media_file(url)
+    return {"ok": True, "deleted_user_id": user_id}
 
 
 @app.delete("/api/admin/posts/{post_id}")
