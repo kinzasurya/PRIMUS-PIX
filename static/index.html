@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Primus Pix — Student Social Hub</title>
+  <meta name="theme-color" content="#f472b6" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Primus Pix" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ========== VIEW 1: SIGN-IN GATE ========== -->
+  <section id="view-login" class="auth-shell hidden">
+    <div class="auth-card">
+      <div class="brand-row">
+        <div class="brand-logo">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-heading-line">
+            <h1 class="brand-title">Primus Pix</h1>
+            <span class="hub-badge">HUB</span>
+          </div>
+          <p class="brand-sub">Campus Community &amp; Academic Portal</p>
+        </div>
+      </div>
+
+      <div class="feature-pills">
+        <span class="fpill">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          Videos
+        </span>
+        <span class="fpill">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Blogs
+        </span>
+        <span class="fpill">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          24h Stories
+        </span>
+      </div>
+
+      <div class="gate-notice">
+        <div class="gate-notice-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <div>
+          <div class="gate-notice-title">One-Time Admin Verification</div>
+          <div class="gate-notice-text">New accounts are verified once by the admin. Already verified? Sign in straight away.</div>
+        </div>
+      </div>
+
+      <form id="student-login-form" class="form-stack">
+        <div class="field">
+          <label for="login-reg">Registration Number</label>
+          <div class="input-icon-wrap">
+            <span class="input-leading-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="6" y1="10" x2="10" y2="10"/><line x1="6" y1="14" x2="14" y2="14"/></svg>
+            </span>
+            <input id="login-reg" type="text" placeholder="REG-2026-042" required autocomplete="off" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="login-name">Full Name</label>
+          <div class="input-icon-wrap">
+            <span class="input-leading-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </span>
+            <input id="login-name" type="text" placeholder="e.g. Kinza Surya" required />
+          </div>
+        </div>
+        <div class="field">
+          <label for="login-class">Class / Section</label>
+          <div class="input-icon-wrap">
+            <span class="input-leading-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+            </span>
+            <input id="login-class" type="text" placeholder="e.g. Grade 10 - A" required />
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="login-submit-btn">
+          Request Sign-In Verification
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </form>
+
+      <div class="divider"><span>OR</span></div>
+
+      <button type="button" class="btn btn-admin-soft btn-full" id="open-admin-login-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Admin Panel Login
+      </button>
+
+      <div class="auth-footer">
+        Protected by Enterprise Campus Identity Shield &bull; <span>Privacy</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== VIEW 2: WAITING FOR APPROVAL / DENIED ========== -->
+  <section id="view-pending" class="auth-shell hidden">
+    <div class="auth-card status-card">
+      <div id="pending-icon" class="status-icon pending">
+        <div class="spinner"></div>
+      </div>
+      <h2 id="pending-title">Waiting for Admin Approval</h2>
+      <p id="pending-desc" class="muted">
+        Your sign-in request has been sent to the administrator. This page will unlock automatically once you are allowed in.
+      </p>
+
+      <div class="identity-pill-box">
+        <div><span class="meta-label">Reg No</span><strong id="pending-reg">—</strong></div>
+        <div><span class="meta-label">Name</span><strong id="pending-name">—</strong></div>
+        <div><span class="meta-label">Class</span><strong id="pending-class">—</strong></div>
+      </div>
+
+      <div class="status-actions">
+        <button type="button" class="btn btn-secondary" id="check-status-btn">Check Now</button>
+        <button type="button" class="btn btn-ghost" id="cancel-pending-btn">Back to Sign In</button>
+      </div>
+
+      <div class="divider"><span>OR</span></div>
+      <button type="button" class="btn btn-admin-soft btn-full" id="pending-admin-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Open Admin Panel
+      </button>
+    </div>
+  </section>
+
+  <!-- ========== VIEW 3: STUDENT SOCIAL APP (iCARLY-STYLE PINK & WHITE PORTAL) ========== -->
+  <section id="view-app" class="app-shell portal-outer hidden">
+    <div class="portal-frame">
+      <!-- TOP PORTAL BANNER -->
+      <header class="portal-header">
+        <div class="portal-header-top">
+          <div class="portal-logo-block" id="nav-home-btn" role="button" tabindex="0">
+            <div class="brand-logo">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+              </svg>
+            </div>
+            <div>
+              <div class="portal-wordmark">Primus<span>Pix</span><small>.hub</small></div>
+              <div class="portal-date" id="portal-today-date">Campus Community Portal</div>
+            </div>
+          </div>
+
+          <div class="portal-search-wrap">
+            <label class="portal-search-label" for="search-input">search our site</label>
+            <input id="search-input" type="search" placeholder="Search videos, blogs, students..." />
+          </div>
+
+          <div class="portal-user-actions">
+            <button type="button" class="btn btn-secondary btn-sm hidden" id="pwa-install-btn" title="Install Primus Pix App">📲 Install App</button>
+            <button type="button" class="portal-avatar-pill" id="nav-my-profile-btn" title="My Profile">
+              <span class="avatar-chip" id="nav-avatar">A</span>
+              <span id="nav-user-name">Student</span>
+            </button>
+            <button type="button" class="btn btn-ghost btn-sm" id="app-admin-btn">Admin</button>
+            <button type="button" class="btn btn-danger-ghost btn-sm" id="student-logout-btn">Sign Out</button>
+          </div>
+        </div>
+
+        <!-- GLOSSY iCARLY-STYLE NAV RIBBON -->
+        <nav class="portal-nav-ribbon">
+          <button type="button" class="ribbon-btn active" id="fb-tab-home">🏠 HOME</button>
+          <button type="button" class="ribbon-btn" id="nav-insta-btn">📸 iSNAPS</button>
+          <button type="button" class="ribbon-btn" id="nav-tube-btn">▶️ iTUBE</button>
+          <button type="button" class="ribbon-btn" id="nav-close-friends-btn">⭐ CLOSE FRIENDS</button>
+          <button type="button" class="ribbon-btn" id="nav-flash-btn">⚡ FLASHES</button>
+          <button type="button" class="ribbon-btn ribbon-cta" id="open-composer-btn">➕ SEND STUFF</button>
+        </nav>
+      </header>
+
+      <main class="portal-body" id="student-main">
+        <!-- HOME PORTAL SECTION -->
+        <div id="section-feed">
+          <!-- Profile Banner (shown when viewing a student profile) -->
+          <div id="profile-banner" class="profile-banner hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+              <button type="button" class="btn btn-ghost btn-sm" id="back-to-feed-btn">&larr; Back to Home</button>
+              <button type="button" class="btn btn-secondary btn-sm hidden" id="open-edit-profile-btn">Edit Profile</button>
+            </div>
+            <div class="profile-header">
+              <div class="avatar-lg" id="profile-avatar">A</div>
+              <div class="profile-info">
+                <h2 id="profile-name">Student Name</h2>
+                <p class="muted" id="profile-meta">REG-001 &bull; Grade 10 - A</p>
+                <p class="profile-bio hidden" id="profile-bio"></p>
+              </div>
+              <div class="profile-stats">
+                <div class="stat-box"><strong id="stat-pics">0</strong><span>Pics</span></div>
+                <div class="stat-box"><strong id="stat-vlogs">0</strong><span>Vlogs</span></div>
+                <div class="stat-box"><strong id="stat-blogs">0</strong><span>Blogs</span></div>
+                <div class="stat-box"><strong id="stat-likes">0</strong><span>Likes</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TOP HERO ROW: CAMPUS TV SCREEN (LEFT) + NOTICE BOARD & SIGNPOSTS (RIGHT) -->
+          <div id="portal-hero-row" class="portal-hero-grid">
+            <!-- Left: Glossy Pink TV Showcase -->
+            <div class="campus-tv-wrap">
+              <div class="campus-tv-bezel">
+                <div class="campus-tv-screen" id="campus-tv-screen">
+                  <div class="tv-empty-state">
+                    <div style="font-size:2.2rem;margin-bottom:6px;">📺</div>
+                    <strong>PrimusPix Campus TV</strong>
+                    <p style="margin:4px 0 0;font-size:0.8rem;opacity:0.8;">Upload a Video to feature it live on the Campus TV!</p>
+                  </div>
+                </div>
+                <div class="campus-tv-bar">
+                  <span class="tv-brand-tag">PrimusTV</span>
+                  <div class="tv-controls">
+                    <button type="button" class="tv-ctrl-btn" id="tv-prev-btn" title="Previous">⏮</button>
+                    <button type="button" class="tv-ctrl-btn" id="tv-open-tube-btn" title="Open iTube">▶ See more</button>
+                    <button type="button" class="tv-ctrl-btn" id="tv-next-btn" title="Next">⏭</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Official Notice Board + Signpost Quick Links -->
+            <div class="portal-hero-right">
+              <div id="notice-board-card" class="notice-board-card portal-notice-panel">
+                <div class="notice-board-header">
+                  <div class="notice-board-title-row">
+                    <span class="notice-pin-icon">📌</span>
+                    <h3>Campus Notice Board</h3>
+                  </div>
+                  <span class="notice-official-pill">Admin Board</span>
+                </div>
+                <div id="notice-board-list" class="notice-board-list">
+                  <p class="muted small" style="margin:0;">Loading campus notices...</p>
+                </div>
+              </div>
+
+              <div class="signpost-row">
+                <button type="button" class="signpost-tag sp-blue" id="sp-open-insta">✨ Scroll iSnaps &rarr;</button>
+                <button type="button" class="signpost-tag sp-pink" id="sp-open-tube">▶️ Watch iTube &rarr;</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- STORIES ROW -->
+          <div id="stories-section" class="fb-stories-wrap portal-stories-box">
+            <div class="fb-section-head">
+              <span class="fb-section-title">✨ 24h Campus Stories</span>
+              <button type="button" class="btn btn-ghost btn-sm" id="stories-manage-cf-btn" style="padding:4px 10px;font-size:0.76rem;">⭐ Manage Close Friends</button>
+            </div>
+            <div id="stories-bar" class="fb-stories-bar"></div>
+          </div>
+
+          <!-- LOWER 2-COLUMN PORTAL GRID (LEFT: PRIMUS POLL | RIGHT: STACKED POST FEED) -->
+          <div id="portal-lower-grid" class="portal-lower-grid">
+            <!-- Left Portal Widget Column -->
+            <aside class="portal-left-widgets" id="flashes-section">
+              <!-- Primus Poll Box -->
+              <div id="ivote-card" class="ivote-card">
+                <div class="ivote-head">
+                  <span class="ivote-logo">🗳️ Primus Poll</span>
+                  <span class="ivote-sub">Campus Pick</span>
+                </div>
+                <div id="ivote-body" class="ivote-body">
+                  <p class="muted small" style="margin:0;">Loading today's poll...</p>
+                </div>
+              </div>
+            </aside>
+
+            <!-- Right Main Posts Column (Stacked iCarly-Style Highlight Cards) -->
+            <div class="portal-right-feed">
+              <div id="feed-controls" class="feed-controls">
+                <div class="filter-tabs" role="tablist">
+                  <button class="tab-btn active" data-type="">All</button>
+                  <button class="tab-btn" data-type="vlog">Videos</button>
+                  <button class="tab-btn" data-type="blog">Blogs</button>
+                </div>
+
+                <div class="filter-right">
+                  <select id="class-filter" class="select-input">
+                    <option value="">All Classes</option>
+                  </select>
+                </div>
+              </div>
+
+              <div id="feed-list" class="feed-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- iSNAPS SCROLL SECTION -->
+        <div id="section-insta" class="hidden">
+          <div class="mode-header-bar">
+            <div>
+              <h2 class="mode-title">✨ iSnaps Feed</h2>
+              <p class="muted small" style="margin:2px 0 0;">Vertical campus scroll &bull; double-tap to like</p>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button type="button" class="btn btn-primary btn-sm" id="insta-upload-pic-btn">+ Upload Video</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="insta-back-home-btn">&larr; Home</button>
+            </div>
+          </div>
+          <div id="insta-feed" class="insta-feed"></div>
+        </div>
+
+        <!-- YOUTUBE-STYLE VIDEOS SECTION (NO SHORTS) -->
+        <div id="section-tube" class="hidden">
+          <div class="mode-header-bar">
+            <div>
+              <h2 class="mode-title">▶️ Primus Tube</h2>
+              <p class="muted small" style="margin:2px 0 0;">Watch campus videos in widescreen</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <button type="button" class="btn btn-primary btn-sm" id="tube-upload-vlog-btn">+ Upload Video</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="tube-back-home-btn">&larr; Home</button>
+            </div>
+          </div>
+          <div id="tube-feed" class="tube-grid"></div>
+        </div>
+
+        <!-- DEDICATED CLOSE FRIENDS PAGE -->
+        <div id="section-close-friends" class="hidden">
+          <div class="mode-header-bar cf-page-header">
+            <div>
+              <h2 class="mode-title">⭐ Close Friends</h2>
+              <p class="muted small" style="margin:2px 0 0;">Private stories, flashes &amp; your inner circle</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <button type="button" class="btn btn-primary btn-sm" id="cf-page-new-post-btn">+ Close Friends Post</button>
+              <button type="button" class="btn btn-success btn-sm" id="cf-page-new-story-btn">+ Close Friends Story</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="cf-page-new-flash-btn">⚡ Close Friends Flash</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="cf-back-home-btn">&larr; Home</button>
+            </div>
+          </div>
+
+          <div class="cf-page-grid">
+            <!-- Left: Close Friends Stories + Flashes + Posts -->
+            <div class="cf-page-main">
+              <div class="fb-stories-wrap cf-panel-green">
+                <div class="fb-section-head">
+                  <span class="fb-section-title">⭐ Close Friends Stories (24h)</span>
+                  <span class="cf-viewer-badge">Private Circle</span>
+                </div>
+                <div id="cf-page-stories-bar" class="fb-stories-bar"></div>
+              </div>
+
+              <div class="flashes-card cf-panel-green">
+                <div class="fb-section-head">
+                  <span class="fb-section-title">⚡ Close Friends Flashes (24h)</span>
+                </div>
+                <div id="cf-page-flashes-bar" class="flashes-bar"></div>
+              </div>
+
+              <div class="cf-posts-section">
+                <div class="fb-section-head" style="margin:6px 2px 12px;">
+                  <span class="fb-section-title">⭐ Close Friends Posts</span>
+                  <span class="muted small">Only visible to your inner circle</span>
+                </div>
+                <div id="cf-page-posts-list" class="feed-list"></div>
+              </div>
+            </div>
+
+            <!-- Right: Manage Your Close Friends List -->
+            <aside class="cf-page-sidebar">
+              <div class="cf-manage-card">
+                <div class="fb-section-head" style="margin-bottom:10px;">
+                  <span class="fb-section-title">Your Circle</span>
+                  <span class="status-pill approved" id="cf-count-pill">0 selected</span>
+                </div>
+                <input id="cf-search-input" type="search" class="cf-search-input" placeholder="Search classmates..." />
+                <div id="cf-page-friends-list" class="cf-list" style="margin-top:10px;max-height:460px;"></div>
+              </div>
+            </aside>
+          </div>
+        </div>
+    </main>
+    </div>
+  </section>
+
+  <!-- ========== VIEW 4: ADMIN LOGIN MODAL (PASSWORD) ========== -->
+  <div id="modal-admin-login" class="modal-backdrop hidden">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h3>Admin Verification Panel</h3>
+        <button type="button" class="icon-btn" id="close-admin-login">&times;</button>
+      </div>
+      <form id="admin-login-form" class="form-stack">
+        <p class="muted small">Enter the admin password to allow or deny student sign-ins and moderate posts.</p>
+        <div class="field">
+          <label for="admin-password">Admin Password</label>
+          <input id="admin-password" type="password" placeholder="Default: admin123" required />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Unlock Admin Panel</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========== VIEW 5: ADMIN DASHBOARD ========== -->
+  <section id="view-admin" class="app-shell hidden">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="topbar-left">
+          <div class="brand-logo sm admin-accent">AD</div>
+          <span class="topbar-brand">Primus Pix Admin</span>
+        </div>
+        <div class="topbar-right">
+          <span class="live-badge"><span class="dot-pulse"></span> Live Auto-Refresh</span>
+          <button type="button" class="btn btn-ghost btn-sm" id="admin-refresh-btn">Refresh</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="admin-back-student-btn">Student View</button>
+          <button type="button" class="btn btn-danger-ghost btn-sm" id="admin-logout-btn">Admin Sign Out</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-container wide">
+      <div class="admin-stats-grid">
+        <div class="admin-stat-card accent-amber">
+          <span class="stat-label">Pending Sign-Ins</span>
+          <strong id="adm-stat-pending">0</strong>
+        </div>
+        <div class="admin-stat-card accent-green">
+          <span class="stat-label">Active Approved Sessions</span>
+          <strong id="adm-stat-active">0</strong>
+        </div>
+        <div class="admin-stat-card accent-indigo">
+          <span class="stat-label">Total Students</span>
+          <strong id="adm-stat-users">0</strong>
+        </div>
+        <div class="admin-stat-card accent-pink">
+          <span class="stat-label">Total Posts</span>
+          <strong id="adm-stat-posts">0</strong>
+        </div>
+      </div>
+
+      <div class="filter-tabs admin-tabs">
+        <button class="tab-btn active" data-admtab="pending">Pending Sign-Ins <span id="pending-count-pill" class="count-pill">0</span></button>
+        <button class="tab-btn" data-admtab="notices">📌 Notice Board</button>
+        <button class="tab-btn" data-admtab="poll">🗳️ Primus Poll</button>
+        <button class="tab-btn" data-admtab="sessions">All Sessions</button>
+        <button class="tab-btn" data-admtab="users">Students</button>
+        <button class="tab-btn" data-admtab="posts">Posts Moderation</button>
+        <button class="tab-btn" data-admtab="email">📬 Email / Mailpit</button>
+      </div>
+
+      <div id="admin-tab-content" class="admin-panel-body"></div>
+    </main>
+  </section>
+
+  <!-- ========== MODAL: CREATE POST COMPOSER ========== -->
+  <div id="modal-composer" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Create a Post</h3>
+        <button type="button" class="icon-btn" id="close-composer">&times;</button>
+      </div>
+
+      <div class="composer-type-tabs" style="grid-template-columns:repeat(2,1fr);">
+        <button type="button" class="type-pill active" data-ctype="vlog">🎬 Upload Video</button>
+        <button type="button" class="type-pill" data-ctype="blog">✍️ Blog</button>
+      </div>
+
+      <form id="composer-form" class="form-stack">
+        <div class="field" id="composer-title-field">
+          <label for="post-title" id="post-title-label">Video Title</label>
+          <input id="post-title" type="text" placeholder="Give your video a catchy title..." required />
+        </div>
+
+        <div class="field" id="composer-file-field">
+          <label for="post-media" id="post-media-label">Upload Video (required)</label>
+          <label class="file-dropzone" for="post-media">
+            <input id="post-media" type="file" accept="video/*" />
+            <span id="file-drop-text">Click to choose a video (MP4, WEBM, MOV — max 100 MB)</span>
+          </label>
+          <div id="media-preview" class="media-preview hidden"></div>
+        </div>
+
+        <div class="field">
+          <label for="post-content" id="post-content-label">Description</label>
+          <textarea id="post-content" rows="4" placeholder="Tell classmates what this video is about..."></textarea>
+        </div>
+
+        <div class="field">
+          <label>Who can see this post?</label>
+          <div class="audience-toggle">
+            <button type="button" class="aud-btn active" data-post-aud="all">🌍 Everyone</button>
+            <button type="button" class="aud-btn cf" data-post-aud="close_friends">⭐ Close Friends</button>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="cancel-composer">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submit-post-btn">Publish Post</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========== MODAL: CREATE STORY ========== -->
+  <div id="modal-story-composer" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Add to Your Story (24h)</h3>
+        <button type="button" class="icon-btn" id="close-story-composer">&times;</button>
+      </div>
+
+      <div class="composer-type-tabs">
+        <button type="button" class="type-pill active" data-stype="image">Photo Story</button>
+        <button type="button" class="type-pill" data-stype="video">Video Story</button>
+        <button type="button" class="type-pill" data-stype="text">Text Story</button>
+      </div>
+
+      <form id="story-form" class="form-stack">
+        <div class="field" id="story-file-field">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <label for="story-media" id="story-media-label">Choose Photo</label>
+            <button type="button" class="btn btn-secondary btn-sm" id="story-camera-btn" style="padding:4px 10px;font-size:0.76rem;">📷 Take Photo</button>
+          </div>
+          <label class="file-dropzone" for="story-media">
+            <input id="story-media" type="file" accept="image/*" />
+            <span id="story-drop-text">Click to upload a photo for your 24h story</span>
+          </label>
+          <div id="story-preview" class="media-preview hidden"></div>
+        </div>
+
+        <div class="field hidden" id="story-color-field">
+          <label>Story Background Color</label>
+          <div class="color-swatches" id="story-swatches">
+            <button type="button" class="swatch active" data-color="#ffd6e8" style="background:#ffd6e8"></button>
+            <button type="button" class="swatch" data-color="#c9e6ff" style="background:#c9e6ff"></button>
+            <button type="button" class="swatch" data-color="#fff0b3" style="background:#fff0b3"></button>
+            <button type="button" class="swatch" data-color="#f5e6d3" style="background:#f5e6d3"></button>
+            <button type="button" class="swatch" data-color="#ffbdd9" style="background:#ffbdd9"></button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Who can see this story?</label>
+          <div class="audience-toggle">
+            <button type="button" class="aud-btn active" data-story-aud="all">🌍 Everyone</button>
+            <button type="button" class="aud-btn cf" data-story-aud="close_friends">⭐ Close Friends</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="story-caption" id="story-caption-label">Caption (optional)</label>
+          <textarea id="story-caption" rows="3" placeholder="Add a caption to your story..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="cancel-story-composer">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submit-story-btn">Share Story</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========== MODAL: STORY VIEWER ========== -->
+  <div id="modal-story-viewer" class="modal-backdrop hidden">
+    <div class="story-viewer-card" id="story-viewer-card">
+      <div class="story-viewer-top">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <strong id="sv-author">Student</strong>
+            <span id="sv-cf-badge" class="cf-viewer-badge hidden">⭐ Close Friends</span>
+            <span id="sv-repost-badge" class="repost-viewer-badge hidden">🔁 Repost</span>
+          </div>
+          <div style="font-size:0.78rem;opacity:0.85" id="sv-meta">just now</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button type="button" class="btn btn-danger btn-sm hidden" id="sv-delete-btn" style="background:rgba(255,255,255,0.2);color:#fff;border-color:rgba(255,255,255,0.4);">Delete</button>
+          <button type="button" class="icon-btn" id="close-story-viewer" style="color:#fff;background:rgba(255,255,255,0.16);border:none;">&times;</button>
+        </div>
+      </div>
+
+      <div class="story-viewer-body" id="sv-body"></div>
+      <div class="story-viewer-caption hidden" id="sv-caption"></div>
+
+      <!-- Interactive Story Footer Bar -->
+      <div class="sv-dock">
+        <button type="button" class="sv-dock-btn hidden" id="sv-viewers-btn">👁️ <span id="sv-viewers-count">0</span> Seen</button>
+        <button type="button" class="sv-dock-btn" id="sv-like-btn"><span id="sv-like-heart">♡</span> <span id="sv-like-count">0</span></button>
+        <button type="button" class="sv-dock-btn" id="sv-comments-btn">💬 <span id="sv-comment-count">0</span></button>
+        <button type="button" class="sv-dock-btn" id="sv-repost-btn">🔁 Repost</button>
+      </div>
+
+      <!-- Slide-up Viewers Drawer (Owner Only) -->
+      <div id="sv-viewers-drawer" class="sv-drawer hidden">
+        <div class="sv-drawer-head">
+          <strong>👁️ Seen By</strong>
+          <button type="button" class="icon-btn" id="close-sv-viewers" style="width:26px;height:26px;font-size:1rem;">&times;</button>
+        </div>
+        <div id="sv-viewers-list" class="sv-drawer-body"></div>
+      </div>
+
+      <!-- Slide-up Comments Drawer -->
+      <div id="sv-comments-drawer" class="sv-drawer hidden">
+        <div class="sv-drawer-head">
+          <strong>💬 Story Comments</strong>
+          <button type="button" class="icon-btn" id="close-sv-comments" style="width:26px;height:26px;font-size:1rem;">&times;</button>
+        </div>
+        <div id="sv-comments-list" class="sv-drawer-body"></div>
+        <form id="sv-comment-form" class="sv-comment-form">
+          <input id="sv-comment-input" type="text" placeholder="Reply or comment on this story..." required />
+          <button type="submit" class="btn btn-primary btn-sm">Send</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== MODAL: IMAGE LIGHTBOX ========== -->
+  <div id="modal-lightbox" class="modal-backdrop hidden">
+    <div class="lightbox-wrap">
+      <button type="button" class="lightbox-close" id="close-lightbox">&times;</button>
+      <img id="lightbox-img" src="" alt="Full preview" />
+    </div>
+  </div>
+
+  <!-- ========== MODAL: CREATE CAMPUS POLL ========== -->
+  <div id="modal-poll" class="modal-backdrop hidden">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h3>📊 Launch a Campus Poll (+35 XP)</h3>
+        <button type="button" class="icon-btn" id="close-poll-modal">&times;</button>
+      </div>
+      <form id="poll-form" class="form-stack">
+        <div class="field">
+          <label for="poll-question">Poll Question</label>
+          <input id="poll-question" type="text" placeholder="e.g. Best study snack during exams?" required />
+        </div>
+        <div class="field">
+          <label>Options (at least 2)</label>
+          <input class="poll-opt-input" type="text" placeholder="Option 1 (required)" required />
+          <input class="poll-opt-input" type="text" placeholder="Option 2 (required)" required />
+          <input class="poll-opt-input" type="text" placeholder="Option 3 (optional)" />
+          <input class="poll-opt-input" type="text" placeholder="Option 4 (optional)" />
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="cancel-poll-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Launch Poll</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Floating XP Burst Layer -->
+  <div id="xp-pop-layer" class="xp-pop-layer"></div>
+
+  <!-- ========== MODAL: EDIT PROFILE ========== -->
+  <div id="modal-edit-profile" class="modal-backdrop hidden">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h3>Edit Profile</h3>
+        <button type="button" class="icon-btn" id="close-edit-profile">&times;</button>
+      </div>
+      <form id="edit-profile-form" class="form-stack">
+        <div class="edit-avatar-row">
+          <div class="avatar-lg" id="edit-avatar-preview">A</div>
+          <div style="flex:1;">
+            <label class="btn btn-secondary btn-sm" for="edit-avatar-input" style="cursor:pointer;">
+              Change Profile Pic
+              <input id="edit-avatar-input" type="file" accept="image/*" style="display:none;" />
+            </label>
+            <div class="muted" style="font-size:0.75rem;margin-top:5px;">JPG, PNG, WEBP, or GIF</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="edit-display-name">Display Name (14-Day Cooldown)</label>
+          <input id="edit-display-name" type="text" maxlength="40" placeholder="Your display name" required />
+          <div id="edit-name-cooldown-hint" class="cooldown-hint">You can change your display name once every 14 days.</div>
+        </div>
+
+        <div class="field">
+          <label for="edit-bio">Bio</label>
+          <textarea id="edit-bio" rows="3" maxlength="200" placeholder="Tell classmates a little about yourself..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="cancel-edit-profile">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="save-profile-btn">Save Profile</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========== MODAL: LIVE IN-APP CAMERA ========== -->
+  <div id="modal-camera" class="modal-backdrop hidden" style="z-index:80;">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h3>📷 Take a Photo</h3>
+        <button type="button" class="icon-btn" id="close-camera-modal">&times;</button>
+      </div>
+      <div class="camera-stage">
+        <video id="camera-video" autoplay playsinline muted></video>
+        <canvas id="camera-canvas" class="hidden"></canvas>
+        <img id="camera-captured-img" class="hidden" alt="Captured photo" />
+      </div>
+      <div id="camera-error" class="muted small hidden" style="text-align:center;margin:10px 0;color:#dc2626;"></div>
+      <div class="modal-footer" style="justify-content:center;margin-top:14px;">
+        <button type="button" class="btn btn-primary" id="camera-capture-btn">📸 Capture</button>
+        <button type="button" class="btn btn-ghost hidden" id="camera-retake-btn">Retake</button>
+        <button type="button" class="btn btn-success hidden" id="camera-use-btn">Use This Photo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== MODAL: CLOSE FRIENDS LIST ========== -->
+  <div id="modal-close-friends" class="modal-backdrop hidden">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h3>⭐ Close Friends</h3>
+        <button type="button" class="icon-btn" id="close-cf-modal">&times;</button>
+      </div>
+      <p class="muted small" style="margin:0 0 14px;">
+        Only people in your Close Friends list can see your green-ring <strong>Close Friends Stories</strong> and <strong>Close Friends Flashes</strong>.
+      </p>
+      <div id="cf-friends-list" class="cf-list"></div>
+    </div>
+  </div>
+
+  <!-- ========== MODAL: DROP A FLASH ========== -->
+  <div id="modal-flash" class="modal-backdrop hidden">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h3>⚡ Drop a Flash (24h)</h3>
+        <button type="button" class="icon-btn" id="close-flash-modal">&times;</button>
+      </div>
+      <form id="flash-form" class="form-stack">
+        <div class="field">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <label for="flash-media">Snap or Upload Photo (optional)</label>
+            <button type="button" class="btn btn-secondary btn-sm" id="flash-camera-btn" style="padding:4px 10px;font-size:0.76rem;">📷 Snap Live</button>
+          </div>
+          <label class="file-dropzone" for="flash-media" style="padding:14px;">
+            <input id="flash-media" type="file" accept="image/*" />
+            <span id="flash-drop-text">Tap to pick a quick photo, or hit Snap Live above</span>
+          </label>
+          <div id="flash-preview" class="media-preview hidden"></div>
+        </div>
+
+        <div class="field">
+          <label for="flash-text">Quick Thought / Vibe (max 80 chars)</label>
+          <input id="flash-text" type="text" maxlength="80" placeholder="e.g. Studying in the library ☕ or Just finished lab!" />
+        </div>
+
+        <div class="field">
+          <label>Audience</label>
+          <div class="audience-toggle">
+            <button type="button" class="aud-btn active" data-flash-aud="all">🌍 Everyone</button>
+            <button type="button" class="aud-btn cf" data-flash-aud="close_friends">⭐ Close Friends</button>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="cancel-flash-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submit-flash-btn">⚡ Post Flash</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
