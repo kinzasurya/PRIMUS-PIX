@@ -154,6 +154,15 @@
 
   async function boot() {
     stopTimers();
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("admin") === "1" && state.adminToken) {
+      params.delete("admin");
+      const cleanUrl = window.location.pathname + (params.toString() ? `?${params.toString()}` : "");
+      window.history.replaceState({}, "", cleanUrl);
+      state.inAdminView = true;
+      await enterAdminDashboard();
+      return;
+    }
     if (state.inAdminView && state.adminToken) {
       await enterAdminDashboard();
       return;
@@ -1893,14 +1902,22 @@
     showOnly("view-login");
   });
 
-  // Admin Login Modal Triggers
+  // Admin Email Magic-Link Modal Triggers
   function triggerAdminAccess() {
     if (state.adminToken) {
       enterAdminDashboard();
     } else {
-      $("admin-password").value = "";
+      const statusEl = $("admin-link-status");
+      if (statusEl) {
+        statusEl.textContent = "";
+        statusEl.classList.add("hidden");
+      }
+      const btn = $("admin-request-link-btn");
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Send Admin Access Link to Email";
+      }
       $("modal-admin-login").classList.remove("hidden");
-      $("admin-password").focus();
     }
   }
 
@@ -1909,19 +1926,21 @@
   $("app-admin-btn").addEventListener("click", triggerAdminAccess);
   $("close-admin-login").addEventListener("click", () => $("modal-admin-login").classList.add("hidden"));
 
-  $("admin-login-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
+  $("admin-request-link-btn").addEventListener("click", async () => {
+    const btn = $("admin-request-link-btn");
+    const statusEl = $("admin-link-status");
+    btn.disabled = true;
+    btn.textContent = "Sending email link...";
     try {
-      const data = await api("/api/admin/login", {
-        method: "POST",
-        json: { password: $("admin-password").value },
-      });
-      state.adminToken = data.admin_token;
-      localStorage.setItem(LS_ADMIN, data.admin_token);
-      $("modal-admin-login").classList.add("hidden");
-      toast("Admin panel unlocked!", "success");
-      enterAdminDashboard();
+      const data = await api("/api/admin/request-link", { method: "POST" });
+      statusEl.textContent = data.message || "One-time Admin Access Link sent! Check your email and click the link within 10 minutes.";
+      statusEl.classList.remove("hidden");
+      btn.textContent = "Resend Admin Access Link";
+      btn.disabled = false;
+      toast("Admin access link emailed!", "success");
     } catch (err) {
+      btn.disabled = false;
+      btn.textContent = "Send Admin Access Link to Email";
       toast(err.message, "error");
     }
   });

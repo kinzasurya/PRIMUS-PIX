@@ -394,21 +394,22 @@
     </div>
   </section>
 
-  <!-- ========== VIEW 4: ADMIN LOGIN MODAL (PASSWORD) ========== -->
+  <!-- ========== VIEW 4: ADMIN EMAIL MAGIC-LINK MODAL ========== -->
   <div id="modal-admin-login" class="modal-backdrop hidden">
     <div class="modal-card modal-sm">
       <div class="modal-header">
-        <h3>Admin Verification Panel</h3>
+        <h3>Admin Email Verification</h3>
         <button type="button" class="icon-btn" id="close-admin-login">&times;</button>
       </div>
-      <form id="admin-login-form" class="form-stack">
-        <p class="muted small">Enter the admin password to allow or deny student sign-ins and moderate posts.</p>
-        <div class="field">
-          <label for="admin-password">Admin Password</label>
-          <input id="admin-password" type="password" placeholder="Default: admin123" required />
-        </div>
-        <button type="submit" class="btn btn-primary btn-full">Unlock Admin Panel</button>
-      </form>
+      <div id="admin-login-form" class="form-stack">
+        <p class="muted small">
+          Password login is disabled for security. Click below to send a <strong>one-time access link</strong> to the admin email. Every request also sends an email alert with IP &amp; device details.
+        </p>
+        <div id="admin-link-status" class="status-banner hidden" style="padding:10px 12px;border-radius:10px;background:#fdf2f8;border:1px solid #f9a8d4;color:#9d174d;font-size:13px;"></div>
+        <button type="button" id="admin-request-link-btn" class="btn btn-primary btn-full">
+          Send Admin Access Link to Email
+        </button>
+      </div>
     </div>
   </div>
 

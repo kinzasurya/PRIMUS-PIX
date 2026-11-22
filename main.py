@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import httpx
-from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
@@ -16,7 +16,9 @@ from security import (
     list_local_inbox,
     load_admin_config,
     save_admin_config,
+    send_admin_magic_link_email,
     send_approval_email,
+    send_student_login_alert_email,
     send_test_gmail,
 )
 
@@ -97,6 +99,15 @@ def init_db() -> None:
 
         CREATE TABLE IF NOT EXISTS admin_sessions (
             token TEXT PRIMARY KEY,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS admin_magic_links (
+            token TEXT PRIMARY KEY,
+            expires_at TEXT NOT NULL,
+            used INTEGER NOT NULL DEFAULT 0,
+            requested_ip TEXT NOT NULL DEFAULT '',
+            user_agent TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL
         );
 
@@ -692,8 +703,15 @@ def serve_upload(filename: str):
 
 # ---------- Student Auth & Per-Session Verification ----------
 
+def _get_client_ip(request: Request) -> str:
+    fwd = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    if fwd:
+        return fwd
+    return request.client.host if request.client else "unknown"
+
+
 @app.post("/api/auth/login")
-def student_login(payload: LoginRequest, background_tasks: BackgroundTasks):
+def student_login(payload: LoginRequest, request: Request, background_tasks: BackgroundTasks):
     reg_number = payload.reg_number.strip().upper()
     name = payload.name.strip()
     class_name = payload.class_name.strip()
@@ -788,6 +806,14 @@ def student_login(payload: LoginRequest, background_tasks: BackgroundTasks):
             )
         else:
             conn.commit()
+            background_tasks.add_task(
+                send_student_login_alert_email,
+                reg_number,
+                name,
+                class_name,
+                _get_client_ip(request),
+                now,
+            )
 
         return {
             "session_id": session_id,
@@ -2022,21 +2048,158 @@ def gamification_leaderboard(user=Depends(require_approved_user)):
 
 # ---------- Admin Authentication & Moderation ----------
 
+def _ensure_admin_magic_links_table(conn) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS admin_magic_links (
+            token TEXT PRIMARY KEY,
+            expires_at TEXT NOT NULL,
+            used INTEGER NOT NULL DEFAULT 0,
+            requested_ip TEXT NOT NULL DEFAULT '',
+            user_agent TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+
+
 @app.post("/api/admin/login")
 def admin_login(payload: AdminLoginRequest):
-    if not secrets.compare_digest(payload.password, ADMIN_PASSWORD):
-        raise HTTPException(status_code=401, detail="Incorrect admin password.")
-    token = secrets.token_urlsafe(32)
+    raise HTTPException(
+        status_code=403,
+        detail="Password login is disabled. Request a one-time Admin Access Link via email instead.",
+    )
+
+
+@app.post("/api/admin/request-link")
+def admin_request_magic_link(request: Request):
+    now_dt = datetime.now(timezone.utc)
+    now = now_dt.isoformat()
+    expires_at = (now_dt + timedelta(minutes=10)).isoformat()
+    magic_token = secrets.token_urlsafe(32)
+    client_ip = _get_client_ip(request)
+    user_agent = (request.headers.get("user-agent") or "Unknown")[:200]
+
     conn = get_db()
     try:
+        _ensure_admin_magic_links_table(conn)
         conn.execute(
-            "INSERT INTO admin_sessions (token, created_at) VALUES (?, ?)",
-            (token, utc_now()),
+            """
+            INSERT INTO admin_magic_links (token, expires_at, used, requested_ip, user_agent, created_at)
+            VALUES (?, ?, 0, ?, ?, ?)
+            """,
+            (magic_token, expires_at, client_ip, user_agent, now),
         )
         conn.commit()
-        return {"admin_token": token}
     finally:
         conn.close()
+
+    cfg = load_admin_config()
+    req_base = str(request.base_url).rstrip("/")
+    configured_base = (cfg.get("app_base_url") or "").strip().rstrip("/")
+    # Use the active request origin on localhost/LAN so local testing links always open locally;
+    # otherwise use configured APP_BASE_URL (e.g. Railway HTTPS URL).
+    if "127.0.0.1" in req_base or "localhost" in req_base or req_base.startswith("http://192.168."):
+        base_url = req_base
+    else:
+        base_url = configured_base or req_base
+
+    magic_url = f"{base_url}/admin/magic-login?token={magic_token}"
+    record = send_admin_magic_link_email(
+        magic_url=magic_url,
+        requested_ip=client_ip,
+        user_agent=user_agent,
+        requested_at=now,
+    )
+    return {
+        "ok": True,
+        "delivery": record.get("delivery"),
+        "email_mode": (cfg.get("email_mode") or "mailpit").strip().lower(),
+        "message": "One-time Admin Access Link sent to the admin email! Open your email and click the link within 10 minutes.",
+    }
+
+
+@app.get("/admin/magic-login", response_class=HTMLResponse)
+def admin_magic_login(token: str = ""):
+    def _error_page(title: str, subtitle: str) -> HTMLResponse:
+        return HTMLResponse(
+            status_code=400,
+            content=f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Primus Pix — {title}</title>
+  <style>
+    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #fdf2f8; color: #1e293b; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }}
+    .card {{ background: #ffffff; border: 2px solid #f472b6; border-radius: 18px; padding: 28px; max-width: 440px; text-align: center; box-shadow: 0 12px 30px rgba(244,114,182,0.18); }}
+    h1 {{ margin: 0 0 10px; font-size: 22px; color: #be185d; }}
+    p {{ margin: 0 0 20px; color: #475569; font-size: 14px; line-height: 1.5; }}
+    a {{ display: inline-block; background: #f472b6; color: #fff; text-decoration: none; font-weight: 700; padding: 11px 22px; border-radius: 10px; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>{title}</h1>
+    <p>{subtitle}</p>
+    <a href="/">Back to Primus Pix</a>
+  </div>
+</body>
+</html>""",
+        )
+
+    clean_token = (token or "").strip()
+    if not clean_token:
+        return _error_page("Missing Access Link", "This admin login link is incomplete. Please request a new link from Primus Pix.")
+
+    conn = get_db()
+    try:
+        _ensure_admin_magic_links_table(conn)
+        row = conn.execute(
+            "SELECT * FROM admin_magic_links WHERE token = ?",
+            (clean_token,),
+        ).fetchone()
+        if not row:
+            return _error_page("Invalid Access Link", "This admin link is not valid. Please request a fresh link.")
+        if row["used"]:
+            return _error_page("Link Already Used", "For your security, each Admin Access Link can only be used once. Request a new link to sign in again.")
+        if datetime.now(timezone.utc) > datetime.fromisoformat(row["expires_at"]):
+            return _error_page("Link Expired", "This Admin Access Link has expired (10-minute limit). Please request a new link.")
+
+        conn.execute("UPDATE admin_magic_links SET used = 1 WHERE token = ?", (clean_token,))
+        admin_token = secrets.token_urlsafe(32)
+        conn.execute(
+            "INSERT INTO admin_sessions (token, created_at) VALUES (?, ?)",
+            (admin_token, utc_now()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return HTMLResponse(
+        content=f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Opening Primus Pix Admin...</title>
+  <style>
+    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #eff6ff; color: #1e293b; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }}
+    .card {{ background: #fff; border: 2px solid #93c5fd; border-radius: 16px; padding: 24px 28px; text-align: center; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Admin Verified</h2>
+    <p>Opening Primus Pix Admin Panel...</p>
+  </div>
+  <script>
+    localStorage.setItem("cp_admin_token", "{admin_token}");
+    window.location.replace("/?admin=1");
+  </script>
+</body>
+</html>""",
+    )
 
 
 @app.get("/api/admin/settings")
