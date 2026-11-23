@@ -4097,6 +4097,29 @@
     });
   }
 
+  // ---------- Dark Mode Toggle (Dark Grey + Navy Blue & Purple) ----------
+  const LS_THEME = "primus_theme";
+  function applyTheme(theme) {
+    const isDark = theme === "dark";
+    document.body.classList.toggle("dark-mode", isDark);
+    document.querySelectorAll("[data-theme-toggle]").forEach((btn) => {
+      btn.textContent = isDark ? "☀️ Light" : "🌙 Dark";
+      btn.title = isDark ? "Switch to Light Mode" : "Switch to Dark Mode";
+    });
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute("content", isDark ? "#16181d" : "#f472b6");
+    }
+  }
+  applyTheme(localStorage.getItem(LS_THEME) || "light");
+  document.querySelectorAll("[data-theme-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const next = document.body.classList.contains("dark-mode") ? "light" : "dark";
+      localStorage.setItem(LS_THEME, next);
+      applyTheme(next);
+    });
+  });
+
   // Lightbox Close
   $("close-lightbox").addEventListener("click", () => $("modal-lightbox").classList.add("hidden"));
   $("modal-lightbox").addEventListener("click", (e) => {

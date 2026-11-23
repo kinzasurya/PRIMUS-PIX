@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Primus Pix — Student Social Hub</title>
+  <title>Primus Pix</title>
   <meta name="theme-color" content="#f472b6" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -27,13 +27,13 @@
             <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
           </svg>
         </div>
-        <div>
+        <div style="flex:1;">
           <div class="brand-heading-line">
             <h1 class="brand-title">Primus Pix</h1>
-            <span class="hub-badge">HUB</span>
           </div>
           <p class="brand-sub">Campus Community &amp; Academic Portal</p>
         </div>
+        <button type="button" class="btn btn-ghost btn-sm theme-toggle-btn" data-theme-toggle title="Toggle Dark Mode">🌙 Dark</button>
       </div>
 
       <div class="feature-pills">
@@ -157,7 +157,7 @@
               </svg>
             </div>
             <div>
-              <div class="portal-wordmark">Primus<span>Pix</span><small>.hub</small></div>
+              <div class="portal-wordmark">Primus<span>Pix</span></div>
               <div class="portal-date" id="portal-today-date">Campus Community Portal</div>
             </div>
           </div>
@@ -168,6 +168,7 @@
           </div>
 
           <div class="portal-user-actions">
+            <button type="button" class="btn btn-ghost btn-sm theme-toggle-btn" data-theme-toggle title="Toggle Dark Mode">🌙 Dark</button>
             <button type="button" class="btn btn-secondary btn-sm hidden" id="pwa-install-btn" title="Install Primus Pix App">📲 Install App</button>
             <button type="button" class="portal-avatar-pill" id="nav-my-profile-btn" title="My Profile">
               <span class="avatar-chip" id="nav-avatar">A</span>
@@ -446,6 +447,7 @@
         </div>
         <div class="topbar-right">
           <span class="live-badge"><span class="dot-pulse"></span> Live Auto-Refresh</span>
+          <button type="button" class="btn btn-ghost btn-sm theme-toggle-btn" data-theme-toggle title="Toggle Dark Mode">🌙 Dark</button>
           <button type="button" class="btn btn-ghost btn-sm" id="admin-refresh-btn">Refresh</button>
           <button type="button" class="btn btn-secondary btn-sm" id="admin-back-student-btn">Student View</button>
           <button type="button" class="btn btn-danger-ghost btn-sm" id="admin-logout-btn">Admin Sign Out</button>

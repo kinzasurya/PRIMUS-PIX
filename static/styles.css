@@ -4227,3 +4227,334 @@ html, body {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* =====================================================================
+   DARK MODE — Dark Grey Background + Navy Blue & Purple Accents
+   ===================================================================== */
+.theme-toggle-btn {
+  border: 1.5px solid var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--text-secondary) !important;
+  border-radius: 999px !important;
+  padding: 6px 12px !important;
+  font-size: 0.8rem !important;
+  font-weight: 700 !important;
+  white-space: nowrap;
+}
+
+.theme-toggle-btn:hover {
+  border-color: #7c3aed !important;
+  color: #6d28d9 !important;
+}
+
+body.dark-mode {
+  --bg: #16181d;
+  --surface: #222631;
+  --surface-muted: #2a2f3d;
+  --border: #363d52;
+  --border-soft: #2e3446;
+
+  --text: #f3f4f6;
+  --text-secondary: #d1d5db;
+  --muted: #9ca3af;
+  --muted-light: #6b7280;
+
+  --pink-start: #1e3a8a;
+  --pink-end: #7c3aed;
+  --pink-soft: rgba(124, 58, 237, 0.16);
+  --pink-border: rgba(139, 92, 246, 0.45);
+  --pink-text: #c4b5fd;
+
+  --indigo-soft: rgba(30, 58, 138, 0.35);
+  --indigo: #60a5fa;
+  --indigo-icon: #818cf8;
+
+  --yellow-soft: rgba(30, 58, 138, 0.28);
+  --yellow-border: rgba(96, 165, 250, 0.35);
+  --yellow-icon-bg: rgba(37, 99, 235, 0.25);
+  --yellow-text: #bfdbfe;
+
+  --shadow: 0 20px 50px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-card: 0 6px 20px rgba(0, 0, 0, 0.32);
+
+  background-color: #16181d !important;
+  background-image:
+    radial-gradient(circle at 10% 10%, rgba(30, 58, 138, 0.34) 0%, transparent 42%),
+    radial-gradient(circle at 90% 12%, rgba(124, 58, 237, 0.28) 0%, transparent 44%),
+    radial-gradient(circle at 50% 90%, rgba(59, 130, 246, 0.14) 0%, transparent 48%) !important;
+  color: var(--text) !important;
+}
+
+body.dark-mode .theme-toggle-btn {
+  background: #2a2f3d !important;
+  border-color: #4c3f7a !important;
+  color: #e9d5ff !important;
+}
+
+body.dark-mode .theme-toggle-btn:hover {
+  background: #353b4d !important;
+  border-color: #8b5cf6 !important;
+  color: #ffffff !important;
+}
+
+/* Auth & Pending Cards */
+body.dark-mode .auth-card,
+body.dark-mode .modal-card,
+body.dark-mode .portal-frame,
+body.dark-mode .topbar {
+  background: #1d2028 !important;
+  border-color: #363d52 !important;
+  color: var(--text) !important;
+}
+
+body.dark-mode .portal-frame {
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.55) !important;
+}
+
+/* Portal Header & Wordmark */
+body.dark-mode .portal-header {
+  background: linear-gradient(180deg, #1f2433 0%, #1a1e29 100%) !important;
+  border-bottom-color: #363d52 !important;
+}
+
+body.dark-mode .brand-logo {
+  background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.35) !important;
+}
+
+body.dark-mode .portal-wordmark,
+body.dark-mode .brand-title {
+  color: #f8fafc !important;
+}
+
+body.dark-mode .portal-wordmark span {
+  color: #a855f7 !important;
+}
+
+body.dark-mode .portal-date,
+body.dark-mode .portal-search-label,
+body.dark-mode .brand-sub,
+body.dark-mode .auth-footer {
+  color: #9ca3af !important;
+}
+
+/* Solid Purple Nav Ribbon with Navy Blue Active/Hover */
+body.dark-mode .portal-nav-ribbon {
+  background: #6d28d9 !important;
+  border-top: 1px solid rgba(167, 139, 250, 0.35) !important;
+  border-bottom: 1px solid rgba(30, 58, 138, 0.6) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.dark-mode .ribbon-btn {
+  color: #f3e8ff !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+body.dark-mode .ribbon-btn:hover {
+  background: rgba(30, 58, 138, 0.72) !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .ribbon-btn.active {
+  background: #1e3a8a !important;
+  color: #ffffff !important;
+  border-color: #60a5fa !important;
+  box-shadow: 0 3px 10px rgba(30, 58, 138, 0.55) !important;
+}
+
+body.dark-mode .ribbon-btn.ribbon-cta {
+  background: linear-gradient(135deg, #1d4ed8 0%, #9333ea 100%) !important;
+  color: #ffffff !important;
+  border-color: #a855f7 !important;
+}
+
+/* Cards, Panels, Feed, Sidebar, Profile, Admin */
+body.dark-mode .portal-panel,
+body.dark-mode .portal-box,
+body.dark-mode .post-card,
+body.dark-mode .feed-card,
+body.dark-mode .story-strip,
+body.dark-mode .stories-bar,
+body.dark-mode .profile-banner,
+body.dark-mode .admin-card,
+body.dark-mode .admin-row-card,
+body.dark-mode .admin-stat-card,
+body.dark-mode .class-group-box,
+body.dark-mode .cf-manage-card,
+body.dark-mode .cf-page-header,
+body.dark-mode .cf-panel-green,
+body.dark-mode .identity-pill-box,
+body.dark-mode .notice-item,
+body.dark-mode .poll-card,
+body.dark-mode .tube-card,
+body.dark-mode .flash-card,
+body.dark-mode .insta-card,
+body.dark-mode .comment-item {
+  background: #222631 !important;
+  border-color: #363d52 !important;
+  color: #f3f4f6 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28) !important;
+}
+
+/* Navy Blue Accented Panels (PrimusTV & Primus Poll) */
+body.dark-mode .portal-tv-box,
+body.dark-mode .portal-poll-box,
+body.dark-mode .blue-box,
+body.dark-mode .panel-blue {
+  background: linear-gradient(165deg, #1b2540 0%, #222631 100%) !important;
+  border-color: #2563eb !important;
+}
+
+body.dark-mode .portal-tv-box .portal-box-header,
+body.dark-mode .portal-poll-box .portal-box-header,
+body.dark-mode .panel-blue .portal-box-header {
+  background: #1e3a8a !important;
+  color: #ffffff !important;
+  border-bottom-color: #3b82f6 !important;
+}
+
+/* Purple Accented Panels (Notice Board & Feed/Stories Headers) */
+body.dark-mode .portal-notice-box,
+body.dark-mode .pink-box,
+body.dark-mode .panel-pink {
+  background: linear-gradient(165deg, #271e3f 0%, #222631 100%) !important;
+  border-color: #7c3aed !important;
+}
+
+body.dark-mode .portal-notice-box .portal-box-header,
+body.dark-mode .panel-pink .portal-box-header,
+body.dark-mode .class-group-header {
+  background: #6d28d9 !important;
+  color: #ffffff !important;
+  border-bottom-color: #8b5cf6 !important;
+}
+
+body.dark-mode .portal-box-header,
+body.dark-mode .modal-header {
+  background: #262b38 !important;
+  color: #f3f4f6 !important;
+  border-bottom-color: #363d52 !important;
+}
+
+/* Inputs, Textareas, Selects */
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select,
+body.dark-mode .portal-search-wrap input,
+body.dark-mode .cf-search-input {
+  background: #181b22 !important;
+  border-color: #3b4259 !important;
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+  color: #6b7280 !important;
+}
+
+body.dark-mode input:focus,
+body.dark-mode textarea:focus,
+body.dark-mode select:focus {
+  border-color: #7c3aed !important;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.25) !important;
+}
+
+/* Buttons */
+body.dark-mode .btn-primary {
+  background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%) !important;
+  border-color: #7c3aed !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.35) !important;
+}
+
+body.dark-mode .btn-primary:hover {
+  filter: brightness(1.12);
+}
+
+body.dark-mode .btn-secondary,
+body.dark-mode .btn-admin-soft,
+body.dark-mode .portal-avatar-pill {
+  background: #2a2f3d !important;
+  border-color: #434b66 !important;
+  color: #e5e7eb !important;
+}
+
+body.dark-mode .btn-secondary:hover,
+body.dark-mode .btn-admin-soft:hover,
+body.dark-mode .portal-avatar-pill:hover {
+  background: #1e3a8a !important;
+  border-color: #60a5fa !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .btn-ghost {
+  color: #cbd5e1 !important;
+}
+
+body.dark-mode .btn-ghost:hover {
+  background: rgba(124, 58, 237, 0.2) !important;
+  color: #ffffff !important;
+}
+
+/* Pills, Badges, Filter Tabs, Poll Options */
+body.dark-mode .fpill,
+body.dark-mode .hub-badge,
+body.dark-mode .filter-pill,
+body.dark-mode .tab-btn,
+body.dark-mode .class-select-chip,
+body.dark-mode .poll-option-btn,
+body.dark-mode .stat-box {
+  background: #2a2f3d !important;
+  border-color: #3d455e !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-mode .filter-pill.active,
+body.dark-mode .tab-btn.active,
+body.dark-mode .class-select-chip.selected {
+  background: #7c3aed !important;
+  border-color: #a855f7 !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .class-select-chip.all-chip.selected,
+body.dark-mode .poll-option-btn.voted {
+  background: #1e3a8a !important;
+  border-color: #60a5fa !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .poll-bar-fill {
+  background: linear-gradient(90deg, #1d4ed8 0%, #7c3aed 100%) !important;
+}
+
+body.dark-mode .story-ring,
+body.dark-mode .story-avatar-ring {
+  background: linear-gradient(135deg, #2563eb 0%, #8b5cf6 100%) !important;
+}
+
+body.dark-mode .avatar-chip,
+body.dark-mode .avatar-lg,
+body.dark-mode .avatar-sm {
+  background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%) !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .divider span {
+  background: #1d2028 !important;
+  color: #9ca3af !important;
+}
+
+body.dark-mode .divider::before {
+  background: #363d52 !important;
+}
+
+body.dark-mode .toast {
+  background: #222631 !important;
+  color: #f3f4f6 !important;
+  border: 1px solid #4c3f7a !important;
+}
