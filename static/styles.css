@@ -4558,3 +4558,192 @@ body.dark-mode .toast {
   color: #f3f4f6 !important;
   border: 1px solid #4c3f7a !important;
 }
+
+
+/* Complete Portal Dark Mode Overrides (Black/Dark Grey + Purple for Pink + Navy Blue for Baby Blue) */
+body.dark-mode .portal-outer {
+  background: #0d0f14 !important;
+  background-image:
+    radial-gradient(circle at 10% 10%, rgba(109, 40, 217, 0.22), transparent 40%),
+    radial-gradient(circle at 90% 14%, rgba(30, 58, 138, 0.3), transparent 44%) !important;
+}
+
+body.dark-mode .portal-frame {
+  background: #14171f !important;
+  border-color: #1e3a8a !important;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.65), 0 0 0 1px #1e3a8a !important;
+}
+
+body.dark-mode .portal-header {
+  background: #14171f !important;
+  border-bottom-color: #272d3d !important;
+}
+
+body.dark-mode .portal-body {
+  background: #111319 !important;
+}
+
+body.dark-mode .portal-wordmark span {
+  background: linear-gradient(90deg, #a855f7, #7c3aed) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+body.dark-mode .portal-date,
+body.dark-mode .portal-search-label {
+  color: #c4b5fd !important;
+}
+
+body.dark-mode .portal-search-wrap input {
+  background: #0d0f14 !important;
+  border-color: #6d28d9 !important;
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .portal-avatar-pill {
+  background: #1e1633 !important;
+  border-color: #7c3aed !important;
+  color: #e9d5ff !important;
+}
+
+/* PrimusTV (Baby Blue -> Navy Blue) */
+body.dark-mode .campus-tv-bezel {
+  background: linear-gradient(145deg, #0f172a, #172554, #1e3a8a) !important;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.65) !important;
+}
+
+body.dark-mode .campus-tv-screen {
+  border-color: #1e3a8a !important;
+  background: #090b10 !important;
+}
+
+body.dark-mode .campus-tv-bar {
+  background: #14171f !important;
+  border: 1px solid #1e3a8a !important;
+}
+
+body.dark-mode .tv-brand-tag {
+  color: #93c5fd !important;
+}
+
+body.dark-mode .tv-ctrl-btn {
+  background: #172554 !important;
+  border-color: #2563eb !important;
+  color: #dbeafe !important;
+}
+
+body.dark-mode .tv-ctrl-btn:hover {
+  background: #1e3a8a !important;
+}
+
+/* Notice Board (Baby Pink -> Purple on Black/Dark Grey) */
+body.dark-mode .notice-board-card,
+body.dark-mode .portal-notice-panel {
+  background: #181b23 !important;
+  border: 2px solid #7c3aed !important;
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .notice-board-header,
+body.dark-mode .notice-board-title-row h3 {
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .notice-official-pill {
+  background: #6d28d9 !important;
+  color: #f3e8ff !important;
+  border-color: #8b5cf6 !important;
+}
+
+/* Signpost Tags (Baby Blue -> Navy Blue, Baby Pink -> Purple) */
+body.dark-mode .signpost-tag {
+  border-color: #272d3d !important;
+}
+
+body.dark-mode .signpost-tag.sp-pink {
+  background: #1e3a8a !important;
+  color: #dbeafe !important;
+  border-color: #2563eb !important;
+}
+
+body.dark-mode .signpost-tag.sp-blue {
+  background: #6d28d9 !important;
+  color: #f3e8ff !important;
+  border-color: #8b5cf6 !important;
+}
+
+/* 24h Campus Stories Box (White/Pink -> Black/Dark Grey + Purple Border) */
+body.dark-mode .fb-stories-wrap,
+body.dark-mode .portal-stories-box {
+  background: #181b23 !important;
+  border: 2px solid #7c3aed !important;
+  color: #f3f4f6 !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.dark-mode .fb-stories-header,
+body.dark-mode .fb-stories-header span,
+body.dark-mode .fb-stories-header h3 {
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .fb-story-card,
+body.dark-mode .story-card {
+  background: #111319 !important;
+  border-color: #6d28d9 !important;
+  color: #f3f4f6 !important;
+}
+
+/* Primus Poll (Baby Blue -> Navy Blue on Black/Dark Grey) */
+body.dark-mode .ivote-card {
+  background: #181b23 !important;
+  border: 2px solid #1e3a8a !important;
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .ivote-head {
+  background: #1e3a8a !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .ivote-q {
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .ivote-opt-btn {
+  background: #121829 !important;
+  border-color: #1e3a8a !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-mode .ivote-opt-btn:hover {
+  border-color: #3b82f6 !important;
+  background: #172554 !important;
+}
+
+body.dark-mode .ivote-opt-fill {
+  background: rgba(37, 99, 235, 0.35) !important;
+}
+
+/* Feed Controls & Stacked Post Cards (Alternating Purple & Navy Blue Borders) */
+body.dark-mode .feed-controls,
+body.dark-mode .section-header,
+body.dark-mode .gate-notice {
+  background: #181b23 !important;
+  border-color: #2e3446 !important;
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .portal-right-feed .post-card {
+  background: #181b23 !important;
+  border-color: #2e3446 !important;
+  border-left: 6px solid #7c3aed !important;
+}
+
+body.dark-mode .portal-right-feed .post-card:nth-child(2n) {
+  border-left-color: #1e3a8a !important;
+}
+
+body.dark-mode .portal-right-feed .post-card:nth-child(3n+3) {
+  border-left-color: #6d28d9 !important;
+}
