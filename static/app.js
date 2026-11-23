@@ -4101,6 +4101,7 @@
   const LS_THEME = "primus_theme";
   function applyTheme(theme) {
     const isDark = theme === "dark";
+    document.documentElement.classList.toggle("dark-mode", isDark);
     document.body.classList.toggle("dark-mode", isDark);
     document.querySelectorAll("[data-theme-toggle]").forEach((btn) => {
       btn.textContent = isDark ? "☀️ Light" : "🌙 Dark";

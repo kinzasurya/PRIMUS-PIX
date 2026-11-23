@@ -4747,3 +4747,69 @@ body.dark-mode .portal-right-feed .post-card:nth-child(2n) {
 body.dark-mode .portal-right-feed .post-card:nth-child(3n+3) {
   border-left-color: #6d28d9 !important;
 }
+
+
+/* Full-Page & High-Specificity Dark Mode Polish (0 white/light leaks anywhere) */
+html.dark-mode,
+body.dark-mode {
+  background: #0d0f14 !important;
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode #fb-tab-home.active,
+body.dark-mode #nav-insta-btn.active,
+body.dark-mode #nav-tube-btn.active,
+body.dark-mode #nav-close-friends-btn.active,
+body.dark-mode #nav-flash-btn.active {
+  background: #1e3a8a !important;
+  color: #ffffff !important;
+  border-color: #60a5fa !important;
+}
+
+body.dark-mode .square-flashes,
+body.dark-mode .ads-card,
+body.dark-mode .admin-row-card.pending-highlight,
+body.dark-mode .notice-item.urgent,
+body.dark-mode .comments-section,
+body.dark-mode .comment-box,
+body.dark-mode .insta-section-head,
+body.dark-mode .tube-section-head,
+body.dark-mode .flash-section-head,
+body.dark-mode .admin-tabs,
+body.dark-mode .admin-panel-box,
+body.dark-mode .composer-tabs,
+body.dark-mode .dropzone {
+  background: #181b23 !important;
+  border-color: #363d52 !important;
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .notice-item.urgent {
+  border-color: #7c3aed !important;
+  background: #231836 !important;
+}
+
+body.dark-mode .story-ring.add-ring {
+  background: linear-gradient(135deg, #1e3a8a, #7c3aed) !important;
+}
+
+body.dark-mode .cf-page-header,
+body.dark-mode .cf-panel-green,
+body.dark-mode .cf-manage-card {
+  background: #181b23 !important;
+  border-color: #7c3aed !important;
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .sv-comment-form input {
+  background: #111319 !important;
+  border-color: #6d28d9 !important;
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .auth-shell,
+body.dark-mode .app-shell,
+body.dark-mode .admin-main {
+  background: transparent !important;
+  color: #f3f4f6 !important;
+}
