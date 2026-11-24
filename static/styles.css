@@ -4844,3 +4844,33 @@ body.dark-mode .admin-main {
   background: transparent !important;
   color: #f3f4f6 !important;
 }
+
+
+/* Custom Primus Pix Logo Image (Light & Dark Auto-Swap) */
+.brand-logo.logo-img-wrap,
+body.dark-mode .brand-logo.logo-img-wrap {
+  background: transparent !important;
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: 13px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.16) !important;
+}
+
+.brand-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.brand-logo-img.logo-dark {
+  display: none;
+}
+
+body.dark-mode .brand-logo-img.logo-light {
+  display: none;
+}
+
+body.dark-mode .brand-logo-img.logo-dark {
+  display: block;
+}

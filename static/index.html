@@ -10,6 +10,7 @@
   <meta name="apple-mobile-web-app-title" content="Primus Pix" />
   <link rel="manifest" href="/manifest.json" />
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-light-32.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png" />
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
@@ -21,11 +22,9 @@
   <section id="view-login" class="auth-shell hidden">
     <div class="auth-card">
       <div class="brand-row">
-        <div class="brand-logo">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
-            <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
-          </svg>
+        <div class="brand-logo logo-img-wrap">
+          <img class="brand-logo-img logo-light" src="/static/icons/icon-light.svg" alt="Primus Pix" />
+          <img class="brand-logo-img logo-dark" src="/static/icons/icon-dark.svg" alt="Primus Pix" />
         </div>
         <div style="flex:1;">
           <div class="brand-heading-line">
@@ -150,11 +149,9 @@
       <header class="portal-header">
         <div class="portal-header-top">
           <div class="portal-logo-block" id="nav-home-btn" role="button" tabindex="0">
-            <div class="brand-logo">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
-                <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
-              </svg>
+            <div class="brand-logo logo-img-wrap">
+              <img class="brand-logo-img logo-light" src="/static/icons/icon-light.svg" alt="Primus Pix" />
+              <img class="brand-logo-img logo-dark" src="/static/icons/icon-dark.svg" alt="Primus Pix" />
             </div>
             <div>
               <div class="portal-wordmark">Primus<span>Pix</span></div>
@@ -442,7 +439,10 @@
     <header class="topbar">
       <div class="topbar-inner">
         <div class="topbar-left">
-          <div class="brand-logo sm admin-accent">AD</div>
+          <div class="brand-logo sm logo-img-wrap">
+            <img class="brand-logo-img logo-light" src="/static/icons/icon-light.svg" alt="Primus Pix" />
+            <img class="brand-logo-img logo-dark" src="/static/icons/icon-dark.svg" alt="Primus Pix" />
+          </div>
           <span class="topbar-brand">Primus Pix Admin</span>
         </div>
         <div class="topbar-right">
