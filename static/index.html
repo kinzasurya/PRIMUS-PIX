@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Primus Pix — Student Social Hub</title>
+  <title>Primus Pix</title>
   <meta name="theme-color" content="#f472b6" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Primus Pix" />
   <link rel="manifest" href="/manifest.json" />
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-light-32.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png" />
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
@@ -21,19 +22,17 @@
   <section id="view-login" class="auth-shell hidden">
     <div class="auth-card">
       <div class="brand-row">
-        <div class="brand-logo">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
-            <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
-          </svg>
+        <div class="brand-logo logo-img-wrap">
+          <img class="brand-logo-img logo-light" src="/static/icons/icon-light.svg" alt="Primus Pix" />
+          <img class="brand-logo-img logo-dark" src="/static/icons/icon-dark.svg" alt="Primus Pix" />
         </div>
-        <div>
+        <div style="flex:1;">
           <div class="brand-heading-line">
             <h1 class="brand-title">Primus Pix</h1>
-            <span class="hub-badge">HUB</span>
           </div>
           <p class="brand-sub">Campus Community &amp; Academic Portal</p>
         </div>
+        <button type="button" class="btn btn-ghost btn-sm theme-toggle-btn" data-theme-toggle title="Toggle Dark Mode">🌙 Dark</button>
       </div>
 
       <div class="feature-pills">
@@ -150,14 +149,12 @@
       <header class="portal-header">
         <div class="portal-header-top">
           <div class="portal-logo-block" id="nav-home-btn" role="button" tabindex="0">
-            <div class="brand-logo">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
-                <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
-              </svg>
+            <div class="brand-logo logo-img-wrap">
+              <img class="brand-logo-img logo-light" src="/static/icons/icon-light.svg" alt="Primus Pix" />
+              <img class="brand-logo-img logo-dark" src="/static/icons/icon-dark.svg" alt="Primus Pix" />
             </div>
             <div>
-              <div class="portal-wordmark">Primus<span>Pix</span><small>.hub</small></div>
+              <div class="portal-wordmark">Primus<span>Pix</span></div>
               <div class="portal-date" id="portal-today-date">Campus Community Portal</div>
             </div>
           </div>
@@ -168,6 +165,7 @@
           </div>
 
           <div class="portal-user-actions">
+            <button type="button" class="btn btn-ghost btn-sm theme-toggle-btn" data-theme-toggle title="Toggle Dark Mode">🌙 Dark</button>
             <button type="button" class="btn btn-secondary btn-sm hidden" id="pwa-install-btn" title="Install Primus Pix App">📲 Install App</button>
             <button type="button" class="portal-avatar-pill" id="nav-my-profile-btn" title="My Profile">
               <span class="avatar-chip" id="nav-avatar">A</span>
@@ -441,11 +439,15 @@
     <header class="topbar">
       <div class="topbar-inner">
         <div class="topbar-left">
-          <div class="brand-logo sm admin-accent">AD</div>
+          <div class="brand-logo sm logo-img-wrap">
+            <img class="brand-logo-img logo-light" src="/static/icons/icon-light.svg" alt="Primus Pix" />
+            <img class="brand-logo-img logo-dark" src="/static/icons/icon-dark.svg" alt="Primus Pix" />
+          </div>
           <span class="topbar-brand">Primus Pix Admin</span>
         </div>
         <div class="topbar-right">
           <span class="live-badge"><span class="dot-pulse"></span> Live Auto-Refresh</span>
+          <button type="button" class="btn btn-ghost btn-sm theme-toggle-btn" data-theme-toggle title="Toggle Dark Mode">🌙 Dark</button>
           <button type="button" class="btn btn-ghost btn-sm" id="admin-refresh-btn">Refresh</button>
           <button type="button" class="btn btn-secondary btn-sm" id="admin-back-student-btn">Student View</button>
           <button type="button" class="btn btn-danger-ghost btn-sm" id="admin-logout-btn">Admin Sign Out</button>
