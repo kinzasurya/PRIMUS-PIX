@@ -4876,3 +4876,21 @@ body.dark-mode .brand-logo-img.logo-light {
 body.dark-mode .brand-logo-img.logo-dark {
   display: block;
 }
+
+
+/* Creator Credit Subtitle */
+.brand-credit {
+  font-size: 0.78rem !important;
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  margin-top: 3px !important;
+}
+
+.brand-credit .credit-sparkle {
+  color: #f472b6;
+  margin: 0 3px;
+}
+
+body.dark-mode .brand-credit .credit-sparkle {
+  color: #c084fc;
+}
