@@ -1704,7 +1704,10 @@
         app_base_url: "http://127.0.0.1:8000",
         local_inbox: [],
       };
-      const isMailpit = (cfg.email_mode || "mailpit") === "mailpit";
+      const mode = (cfg.email_mode || "mailpit").toLowerCase();
+      const isResend = mode === "resend";
+      const isMailpit = mode === "mailpit";
+      const isGmail = mode === "gmail";
       const inboxHtml = cfg.local_inbox && cfg.local_inbox.length
         ? cfg.local_inbox
             .map(
@@ -1736,19 +1739,28 @@
         <div class="admin-list">
           <div class="admin-row-card" style="display:block;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
-              <h3 style="margin:0;">📬 Email Delivery (Mailpit / Gmail)</h3>
+              <h3 style="margin:0;">📬 Email Delivery (Resend / Mailpit / Gmail)</h3>
               <a href="http://127.0.0.1:8025" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Open Mailpit Inbox (8025) ↗</a>
             </div>
             <p class="muted small" style="margin:0 0 14px;">
-              Use <strong>Mailpit</strong> (<code>127.0.0.1:1025</code>) for instant local email testing, or switch to <strong>Gmail SMTP</strong> for live emails.
+              Use <strong>Resend (resend.com)</strong> for fast, reliable production emails on Railway, or <strong>Mailpit</strong> (<code>127.0.0.1:1025</code>) for local testing.
             </p>
             <form id="gmail-settings-form" class="form-stack">
               <div class="field">
                 <label for="cfg-email-mode">Email Provider Mode</label>
                 <select id="cfg-email-mode" class="select-input" style="width:100%;">
+                  <option value="resend"${isResend ? " selected" : ""}>🚀 Resend (resend.com — Recommended for Railway)</option>
                   <option value="mailpit"${isMailpit ? " selected" : ""}>📬 Mailpit (Local Testing — 127.0.0.1:1025)</option>
-                  <option value="gmail"${!isMailpit ? " selected" : ""}>📧 Gmail SMTP (Live Production)</option>
+                  <option value="gmail"${isGmail ? " selected" : ""}>📧 Gmail SMTP</option>
                 </select>
+              </div>
+              <div class="field">
+                <label for="cfg-resend-key">Resend API Key ${cfg.resend_api_key_set ? "(Saved — leave blank to keep current)" : "(re_... from resend.com/api-keys)"}</label>
+                <input id="cfg-resend-key" type="password" placeholder="${cfg.resend_api_key_set ? "••••••••••••••••" : "re_xxxxxxxxxxxxxxxx"}" />
+              </div>
+              <div class="field">
+                <label for="cfg-resend-from">Resend From Address</label>
+                <input id="cfg-resend-from" type="text" value="${escapeHtml(cfg.resend_from || "Primus Pix <onboarding@resend.dev>")}" placeholder="Primus Pix <noreply@kinza.roundsquare.ae>" />
               </div>
               <div style="display:flex;gap:12px;flex-wrap:wrap;">
                 <div class="field" style="flex:2;min-width:160px;">
@@ -1798,6 +1810,8 @@
               auth: "admin",
               json: {
                 email_mode: $("cfg-email-mode").value,
+                resend_api_key: $("cfg-resend-key").value,
+                resend_from: $("cfg-resend-from").value,
                 smtp_host: $("cfg-smtp-host").value,
                 smtp_port: Number($("cfg-smtp-port").value) || 1025,
                 gmail_user: $("cfg-gmail-user").value,
