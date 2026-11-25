@@ -13,6 +13,8 @@ from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Optional
 
+import httpx
+
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "admin_config.json"
 LOCAL_INBOX_DIR = BASE_DIR / "local_inbox"
@@ -37,8 +39,12 @@ def load_admin_config() -> dict:
         data["totp_secret"] = base64.b32encode(raw).decode("ascii").rstrip("=")
         changed = True
 
+    env_resend_key = os.environ.get("RESEND_API_KEY", "").strip()
+    default_mode = os.environ.get("EMAIL_MODE") or ("resend" if env_resend_key else "mailpit")
     defaults = {
-        "email_mode": os.environ.get("EMAIL_MODE", "mailpit"),  # mailpit | gmail
+        "email_mode": default_mode,  # resend | mailpit | gmail
+        "resend_api_key": env_resend_key,
+        "resend_from": os.environ.get("RESEND_FROM", "Primus Pix <onboarding@resend.dev>"),
         "smtp_host": os.environ.get("SMTP_HOST", "127.0.0.1"),
         "smtp_port": int(os.environ.get("SMTP_PORT", "1025")),
         "admin_email": os.environ.get("ADMIN_EMAIL", "kinza.surya@gmail.com"),
@@ -50,6 +56,17 @@ def load_admin_config() -> dict:
         if k not in data:
             data[k] = v
             changed = True
+
+    # On Railway/cloud deploys, let explicit env vars keep Resend/base URL fresh if set
+    if env_resend_key and not data.get("resend_api_key"):
+        data["resend_api_key"] = env_resend_key
+        changed = True
+    if os.environ.get("EMAIL_MODE") and data.get("email_mode") != os.environ.get("EMAIL_MODE").strip().lower():
+        data["email_mode"] = os.environ.get("EMAIL_MODE").strip().lower()
+        changed = True
+    if os.environ.get("RESEND_FROM") and not data.get("resend_from"):
+        data["resend_from"] = os.environ.get("RESEND_FROM").strip()
+        changed = True
 
     if changed:
         save_admin_config(data)
@@ -223,43 +240,15 @@ def send_approval_email(
         "error": None,
     }
 
-    email_mode = (cfg.get("email_mode") or "mailpit").strip().lower()
-    smtp_host = (cfg.get("smtp_host") or "127.0.0.1").strip()
-    smtp_port = int(cfg.get("smtp_port") or 1025)
-    gmail_user = (cfg.get("gmail_user") or "").strip()
-    gmail_pass = (cfg.get("gmail_app_password") or "").replace(" ", "").strip()
-    admin_email = (cfg.get("admin_email") or gmail_user or "admin@primuspix.local").strip()
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = gmail_user or "noreply@primuspix.local"
-    msg["To"] = admin_email
     text_body = (
         f"New Primus Pix Sign-In Request\n"
         f"Reg No: {reg_number}\nName: {name}\nClass: {class_name}\n\n"
         f"ALLOW: {allow_url}\n"
         f"DENY:  {deny_url}\n"
     )
-    msg.attach(MIMEText(text_body, "plain"))
-    msg.attach(MIMEText(html_body, "html"))
-
-    if email_mode == "mailpit":
-        try:
-            with smtplib.SMTP(smtp_host, smtp_port, timeout=5) as server:
-                server.sendmail(msg["From"], [admin_email], msg.as_string())
-            email_record["delivery"] = f"mailpit ({smtp_host}:{smtp_port})"
-        except Exception as exc:
-            email_record["delivery"] = "local_inbox (mailpit not running)"
-            email_record["error"] = str(exc)
-    elif gmail_user and gmail_pass and admin_email:
-        try:
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
-                server.login(gmail_user, gmail_pass)
-                server.sendmail(gmail_user, [admin_email], msg.as_string())
-            email_record["delivery"] = f"gmail ({admin_email})"
-        except Exception as exc:
-            email_record["delivery"] = "local_inbox (gmail failed)"
-            email_record["error"] = str(exc)
+    delivery, err = _deliver_email(subject, text_body, html_body)
+    email_record["delivery"] = delivery
+    email_record["error"] = err
 
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     fname = f"{ts}_session_{session_id}.json"
@@ -270,11 +259,38 @@ def send_approval_email(
 def _deliver_email(subject: str, text_body: str, html_body: str) -> tuple[str, Optional[str]]:
     cfg = load_admin_config()
     email_mode = (cfg.get("email_mode") or "mailpit").strip().lower()
+    resend_api_key = (cfg.get("resend_api_key") or os.environ.get("RESEND_API_KEY") or "").strip()
+    resend_from = (cfg.get("resend_from") or os.environ.get("RESEND_FROM") or "Primus Pix <onboarding@resend.dev>").strip()
     smtp_host = (cfg.get("smtp_host") or "127.0.0.1").strip()
     smtp_port = int(cfg.get("smtp_port") or 1025)
     gmail_user = (cfg.get("gmail_user") or "").strip()
     gmail_pass = (cfg.get("gmail_app_password") or "").replace(" ", "").strip()
-    admin_email = (cfg.get("admin_email") or gmail_user or "admin@primuspix.local").strip()
+    admin_email = (cfg.get("admin_email") or gmail_user or "kinza.surya@gmail.com").strip()
+
+    if email_mode == "resend":
+        if not resend_api_key:
+            return "local_inbox (resend api key missing)", "RESEND_API_KEY is not configured"
+        try:
+            resp = httpx.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {resend_api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "from": resend_from,
+                    "to": [admin_email],
+                    "subject": subject,
+                    "html": html_body,
+                    "text": text_body,
+                },
+                timeout=10.0,
+            )
+            if resp.status_code in (200, 201):
+                return f"resend ({admin_email})", None
+            return "local_inbox (resend failed)", f"Resend HTTP {resp.status_code}: {resp.text[:200]}"
+        except Exception as exc:
+            return "local_inbox (resend failed)", str(exc)
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -298,7 +314,7 @@ def _deliver_email(subject: str, text_body: str, html_body: str) -> tuple[str, O
             return f"gmail ({admin_email})", None
         except Exception as exc:
             return "local_inbox (gmail failed)", str(exc)
-    return "local_inbox (gmail not configured)", "Gmail credentials not configured"
+    return "local_inbox (email not configured)", "Email provider credentials not configured"
 
 
 def send_admin_magic_link_email(
@@ -419,6 +435,22 @@ def list_local_inbox(limit: int = 30) -> list[dict]:
 def send_test_gmail() -> tuple[bool, str]:
     cfg = load_admin_config()
     email_mode = (cfg.get("email_mode") or "mailpit").strip().lower()
+    admin_email = (cfg.get("admin_email") or "kinza.surya@gmail.com").strip()
+
+    if email_mode == "resend":
+        delivery, err = _deliver_email(
+            subject="[Primus Pix] Resend Test Email Successful",
+            text_body="Your Primus Pix Resend email delivery is connected and working!",
+            html_body=(
+                "<div style='font-family:sans-serif;padding:22px;background:#14171f;color:#f3f4f6;border-radius:14px;border:2px solid #7c3aed;'>"
+                "<h2 style='color:#c4b5fd;margin-top:0;'>Primus Pix + Resend Connected!</h2>"
+                "<p>Admin Magic Links, Student Approval emails, and Sign-In Alerts will now be delivered via Resend.</p></div>"
+            ),
+        )
+        if err:
+            return False, f"Resend error: {err}"
+        return True, f"Test email sent via Resend to {admin_email}!"
+
     smtp_host = (cfg.get("smtp_host") or "127.0.0.1").strip()
     smtp_port = int(cfg.get("smtp_port") or 1025)
     gmail_user = (cfg.get("gmail_user") or "").strip()

@@ -452,7 +452,9 @@ def compute_badges(conn: Any, user_id: int) -> list[dict]:
 
 
 class AdminSettingsUpdate(BaseModel):
-    email_mode: str = "mailpit"
+    email_mode: str = "resend"  # resend | mailpit | gmail
+    resend_api_key: Optional[str] = None
+    resend_from: str = "Primus Pix <onboarding@resend.dev>"
     smtp_host: str = "127.0.0.1"
     smtp_port: int = 1025
     admin_email: str = ""
@@ -2207,6 +2209,8 @@ def admin_get_settings(_=Depends(require_admin)):
     cfg = load_admin_config()
     return {
         "email_mode": cfg.get("email_mode", "mailpit"),
+        "resend_api_key_set": bool((cfg.get("resend_api_key") or "").strip()),
+        "resend_from": cfg.get("resend_from", "Primus Pix <onboarding@resend.dev>"),
         "smtp_host": cfg.get("smtp_host", "127.0.0.1"),
         "smtp_port": int(cfg.get("smtp_port", 1025)),
         "admin_email": cfg.get("admin_email", ""),
@@ -2220,7 +2224,12 @@ def admin_get_settings(_=Depends(require_admin)):
 @app.post("/api/admin/settings")
 def admin_update_settings(payload: AdminSettingsUpdate, _=Depends(require_admin)):
     cfg = load_admin_config()
-    cfg["email_mode"] = "gmail" if payload.email_mode.strip().lower() == "gmail" else "mailpit"
+    mode = payload.email_mode.strip().lower()
+    cfg["email_mode"] = mode if mode in ("resend", "mailpit", "gmail") else "mailpit"
+    if payload.resend_api_key is not None and payload.resend_api_key.strip() != "":
+        cfg["resend_api_key"] = payload.resend_api_key.strip()
+    if payload.resend_from.strip():
+        cfg["resend_from"] = payload.resend_from.strip()
     cfg["smtp_host"] = payload.smtp_host.strip() or "127.0.0.1"
     cfg["smtp_port"] = int(payload.smtp_port or 1025)
     cfg["admin_email"] = payload.admin_email.strip()
@@ -2233,6 +2242,7 @@ def admin_update_settings(payload: AdminSettingsUpdate, _=Depends(require_admin)
     return {
         "ok": True,
         "email_mode": cfg["email_mode"],
+        "resend_api_key_set": bool((cfg.get("resend_api_key") or "").strip()),
         "gmail_app_password_set": bool((cfg.get("gmail_app_password") or "").strip()),
     }
 
