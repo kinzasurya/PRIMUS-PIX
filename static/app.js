@@ -1667,32 +1667,122 @@
         })
         .join("")}</div>`;
     } else if (state.adminTab === "posts") {
-      if (!posts.length) {
-        container.innerHTML = `<div class="empty-state"><h3>No posts published yet</h3></div>`;
-        return;
-      }
-      container.innerHTML = `<div class="admin-list">${posts
-        .map(
-          (p) => `
-          <div class="admin-row-card">
-            <div class="admin-row-main">
-              <div class="admin-row-title">
-                <span class="type-badge ${p.post_type}">${p.post_type}</span>
-                <span>${escapeHtml(p.title || "(Untitled post)")}</span>
+      const stories = (state.adminOverview && state.adminOverview.stories) || [];
+      const flashes = (state.adminOverview && state.adminOverview.flashes) || [];
+
+      const postsHtml = posts.length
+        ? posts
+            .map(
+              (p) => `
+              <div class="admin-row-card" style="${p.is_hidden ? "opacity:0.72;" : ""}">
+                <div class="admin-row-main">
+                  <div class="admin-row-title">
+                    <span class="type-badge ${p.post_type}">${p.post_type}</span>
+                    <span>${escapeHtml(p.title || "(Untitled post)")}</span>
+                    ${
+                      p.is_hidden
+                        ? `<span class="status-pill banned">Hidden</span>`
+                        : `<span class="status-pill approved">Visible</span>`
+                    }
+                  </div>
+                  <div class="admin-row-sub">
+                    By <strong>${escapeHtml(p.author_name)}</strong> (${escapeHtml(p.author_reg_number)} &bull; ${escapeHtml(p.author_class)}) &bull;
+                    ${timeAgo(p.created_at)} &bull; ♥ ${p.like_count} &bull; 💬 ${p.comment_count}
+                  </div>
+                  ${p.content ? `<div class="admin-row-sub" style="margin-top:4px">${escapeHtml(p.content.slice(0, 160))}${p.content.length > 160 ? "…" : ""}</div>` : ""}
+                </div>
+                <div class="admin-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;">
+                  ${
+                    p.is_hidden
+                      ? `<button type="button" class="btn btn-success btn-sm" data-adm-hide-post="${p.id}" data-hide-val="false">👁️ Unhide</button>`
+                      : `<button type="button" class="btn btn-secondary btn-sm" data-adm-hide-post="${p.id}" data-hide-val="true">🙈 Hide</button>`
+                  }
+                  <button type="button" class="btn btn-danger-ghost btn-sm" data-adm-del-post="${p.id}">Delete</button>
+                </div>
               </div>
-              <div class="admin-row-sub">
-                By <strong>${escapeHtml(p.author_name)}</strong> (${escapeHtml(p.author_reg_number)} &bull; ${escapeHtml(p.author_class)}) &bull;
-                ${timeAgo(p.created_at)} &bull; ♥ ${p.like_count} &bull; 💬 ${p.comment_count}
+            `
+            )
+            .join("")
+        : `<div class="empty-state"><h3>No posts or vlogs published yet</h3></div>`;
+
+      const storiesHtml = stories.length
+        ? stories
+            .map(
+              (st) => `
+              <div class="admin-row-card" style="${st.is_hidden ? "opacity:0.72;" : ""}">
+                <div class="admin-row-main">
+                  <div class="admin-row-title">
+                    <span class="type-badge">${escapeHtml(st.story_type || "story")}</span>
+                    <span>${escapeHtml(st.caption || "(No caption)")}</span>
+                    ${
+                      st.is_hidden
+                        ? `<span class="status-pill banned">Hidden</span>`
+                        : `<span class="status-pill approved">Visible</span>`
+                    }
+                  </div>
+                  <div class="admin-row-sub">
+                    By <strong>${escapeHtml(st.author_name)}</strong> (${escapeHtml(st.author_reg_number)} &bull; ${escapeHtml(st.author_class)}) &bull;
+                    ${timeAgo(st.created_at)} ${st.audience === "close_friends" ? "&bull; ⭐ Close Friends" : ""}
+                  </div>
+                </div>
+                <div class="admin-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;">
+                  ${
+                    st.is_hidden
+                      ? `<button type="button" class="btn btn-success btn-sm" data-adm-hide-story="${st.id}" data-hide-val="false">👁️ Unhide</button>`
+                      : `<button type="button" class="btn btn-secondary btn-sm" data-adm-hide-story="${st.id}" data-hide-val="true">🙈 Hide</button>`
+                  }
+                  <button type="button" class="btn btn-danger-ghost btn-sm" data-adm-del-story="${st.id}">Delete</button>
+                </div>
               </div>
-              ${p.content ? `<div class="admin-row-sub" style="color:#cbd5e1;margin-top:4px">${escapeHtml(p.content.slice(0, 160))}${p.content.length > 160 ? "…" : ""}</div>` : ""}
-            </div>
-            <div class="admin-row-actions">
-              <button type="button" class="btn btn-danger btn-sm" data-adm-del-post="${p.id}">Delete Post</button>
-            </div>
-          </div>
-        `
-        )
-        .join("")}</div>`;
+            `
+            )
+            .join("")
+        : `<p class="muted small" style="margin:4px 0 0;">No stories posted yet.</p>`;
+
+      const flashesHtml = flashes.length
+        ? flashes
+            .map(
+              (fl) => `
+              <div class="admin-row-card" style="${fl.is_hidden ? "opacity:0.72;" : ""}">
+                <div class="admin-row-main">
+                  <div class="admin-row-title">
+                    <span class="type-badge">flash</span>
+                    <span>${escapeHtml(fl.text || "(Media flash)")}</span>
+                    ${
+                      fl.is_hidden
+                        ? `<span class="status-pill banned">Hidden</span>`
+                        : `<span class="status-pill approved">Visible</span>`
+                    }
+                  </div>
+                  <div class="admin-row-sub">
+                    By <strong>${escapeHtml(fl.author_name)}</strong> (${escapeHtml(fl.author_reg_number)} &bull; ${escapeHtml(fl.author_class)}) &bull;
+                    ${timeAgo(fl.created_at)} ${fl.audience === "close_friends" ? "&bull; ⭐ Close Friends" : ""}
+                  </div>
+                </div>
+                <div class="admin-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;">
+                  ${
+                    fl.is_hidden
+                      ? `<button type="button" class="btn btn-success btn-sm" data-adm-hide-flash="${fl.id}" data-hide-val="false">👁️ Unhide</button>`
+                      : `<button type="button" class="btn btn-secondary btn-sm" data-adm-hide-flash="${fl.id}" data-hide-val="true">🙈 Hide</button>`
+                  }
+                  <button type="button" class="btn btn-danger-ghost btn-sm" data-adm-del-flash="${fl.id}">Delete</button>
+                </div>
+              </div>
+            `
+            )
+            .join("")
+        : `<p class="muted small" style="margin:4px 0 0;">No flashes posted yet.</p>`;
+
+      container.innerHTML = `
+        <div class="admin-list">
+          <h3 style="margin:4px 0 6px;">🎬 Posts, Vlogs &amp; Blogs (${posts.length})</h3>
+          ${postsHtml}
+          <h3 style="margin:18px 0 6px;">✨ 24h Stories (${stories.length})</h3>
+          ${storiesHtml}
+          <h3 style="margin:18px 0 6px;">⚡ Flashes (${flashes.length})</h3>
+          ${flashesHtml}
+        </div>
+      `;
     } else if (state.adminTab === "email") {
       const cfg = state.adminSettings || {
         email_mode: "mailpit",
@@ -2045,7 +2135,12 @@
     const banBtn = e.target.closest("[data-adm-ban]");
     const blockOpenBtn = e.target.closest("[data-adm-block-open]");
     const removeUserBtn = e.target.closest("[data-adm-remove-user]");
+    const hidePostBtn = e.target.closest("[data-adm-hide-post]");
     const delPostBtn = e.target.closest("[data-adm-del-post]");
+    const hideStoryBtn = e.target.closest("[data-adm-hide-story]");
+    const delStoryBtn = e.target.closest("[data-adm-del-story]");
+    const hideFlashBtn = e.target.closest("[data-adm-hide-flash]");
+    const delFlashBtn = e.target.closest("[data-adm-del-flash]");
     const editNoticeBtn = e.target.closest("[data-adm-edit-notice]");
     const delNoticeBtn = e.target.closest("[data-adm-del-notice]");
     const noticeClassBtn = e.target.closest("[data-adm-notice-class]");
@@ -2101,9 +2196,44 @@
         });
         toast(isBanned ? "Student blocked and sessions revoked." : "Student unblocked.", isBanned ? "error" : "success");
         refreshAdminData();
+      } else if (hidePostBtn) {
+        const isHidden = hidePostBtn.dataset.hideVal === "true";
+        await api(`/api/admin/posts/${hidePostBtn.dataset.admHidePost}/hide`, {
+          method: "POST",
+          auth: "admin",
+          json: { is_hidden: isHidden },
+        });
+        toast(isHidden ? "Post hidden from students." : "Post is visible again!", isHidden ? "error" : "success");
+        refreshAdminData();
       } else if (delPostBtn) {
         await api(`/api/admin/posts/${delPostBtn.dataset.admDelPost}`, { method: "DELETE", auth: "admin" });
         toast("Post deleted.");
+        refreshAdminData();
+      } else if (hideStoryBtn) {
+        const isHidden = hideStoryBtn.dataset.hideVal === "true";
+        await api(`/api/admin/stories/${hideStoryBtn.dataset.admHideStory}/hide`, {
+          method: "POST",
+          auth: "admin",
+          json: { is_hidden: isHidden },
+        });
+        toast(isHidden ? "Story hidden from students." : "Story is visible again!", isHidden ? "error" : "success");
+        refreshAdminData();
+      } else if (delStoryBtn) {
+        await api(`/api/admin/stories/${delStoryBtn.dataset.admDelStory}`, { method: "DELETE", auth: "admin" });
+        toast("Story deleted.");
+        refreshAdminData();
+      } else if (hideFlashBtn) {
+        const isHidden = hideFlashBtn.dataset.hideVal === "true";
+        await api(`/api/admin/flashes/${hideFlashBtn.dataset.admHideFlash}/hide`, {
+          method: "POST",
+          auth: "admin",
+          json: { is_hidden: isHidden },
+        });
+        toast(isHidden ? "Flash hidden from students." : "Flash is visible again!", isHidden ? "error" : "success");
+        refreshAdminData();
+      } else if (delFlashBtn) {
+        await api(`/api/admin/flashes/${delFlashBtn.dataset.admDelFlash}`, { method: "DELETE", auth: "admin" });
+        toast("Flash deleted.");
         refreshAdminData();
       } else if (editNoticeBtn) {
         state.editingNoticeId = Number(editNoticeBtn.dataset.admEditNotice);
