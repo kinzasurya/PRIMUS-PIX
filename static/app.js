@@ -3404,9 +3404,16 @@
     await loadInstaFeed();
   }
 
+  let instaObserver = null;
+  let instaMuted = true;
+
   async function loadInstaFeed() {
     const feed = $("insta-feed");
     if (!feed) return;
+    if (instaObserver) {
+      instaObserver.disconnect();
+      instaObserver = null;
+    }
     feed.innerHTML = `<div class="empty-state"><h3>Loading iSnaps...</h3></div>`;
     try {
       const data = await api("/api/posts", { auth: "student" });
@@ -3414,57 +3421,126 @@
       if (!posts.length) {
         feed.innerHTML = `
           <div class="empty-state">
-            <h3>No videos or blogs yet ✨</h3>
-            <p>Tap <strong>+ Upload Video</strong> above to drop the first post in iSnaps!</p>
+            <h3>No snaps yet ✨</h3>
+            <p>Tap <strong>+ Upload Video</strong> above to drop the first snap in iSnaps!</p>
           </div>
         `;
         return;
       }
       feed.innerHTML = posts
         .map((p) => {
-          const mediaHtml =
-            p.post_type === "vlog" && p.media_url
-              ? `<div class="insta-media-wrap" data-insta-dbl="${p.id}" style="aspect-ratio:16/10;background:#000;">
-                   <video src="${escapeHtml(p.media_url)}" controls playsinline preload="metadata" style="width:100%;height:100%;object-fit:contain;"></video>
-                 </div>`
-              : `<div class="insta-media-wrap" data-insta-dbl="${p.id}" style="aspect-ratio:auto;min-height:140px;padding:24px 20px;background:linear-gradient(135deg,#fdf2f8,#eff6ff);color:#111827;flex-direction:column;text-align:left;align-items:flex-start;">
-                   ${p.title ? `<h3 style="margin:0 0 8px;font-size:1.15rem;">${escapeHtml(p.title)}</h3>` : ""}
-                   <p style="margin:0;line-height:1.6;color:#374151;white-space:pre-wrap;">${escapeHtml(p.content)}</p>
-                 </div>`;
+          const isVideo = p.post_type === "vlog" && p.media_url;
+          const stageHtml = isVideo
+            ? `<video class="insta-reel-video" src="${escapeHtml(p.media_url)}" playsinline loop ${instaMuted ? "muted" : ""} preload="metadata" data-reel-video="${p.id}"></video>`
+            : `<div class="insta-reel-blog">
+                 <span class="type-badge blog" style="align-self:flex-start;margin-bottom:10px;">Blog</span>
+                 ${p.title ? `<h3>${escapeHtml(p.title)}</h3>` : ""}
+                 <p>${escapeHtml(p.content || "")}</p>
+               </div>`;
           return `
-            <article class="insta-card">
-              <div class="insta-head">
-                <div class="post-author" data-insta-profile="${p.user_id}">
-                  <div class="post-avatar" style="width:36px;height:36px;font-size:0.84rem;">${renderAvatar(p.author_avatar, p.author_name)}</div>
-                  <div>
-                    <div class="post-author-name" style="font-size:0.88rem;">${escapeHtml(p.author_name)}</div>
-                    <div class="post-meta">${escapeHtml(p.author_class)} &bull; ${timeAgo(p.created_at)}</div>
-                  </div>
-                </div>
-                <span class="type-badge ${p.post_type}">${p.post_type === "vlog" ? "Video" : "Blog"}</span>
-              </div>
-              ${mediaHtml}
-              <div class="insta-actions">
-                <button type="button" class="action-btn ${p.liked_by_me ? "liked" : ""}" data-insta-like="${p.id}">
-                  <span>${p.liked_by_me ? "♥" : "♡"}</span>
-                  <span data-insta-like-cnt="${p.id}">${p.like_count}</span>
+            <article class="insta-reel-slide" data-insta-dbl="${p.id}">
+              ${stageHtml}
+              <div class="reel-action-rail">
+                <button type="button" class="reel-rail-btn ${p.liked_by_me ? "liked" : ""}" data-insta-like="${p.id}" title="Like">
+                  <span class="reel-rail-circle">${p.liked_by_me ? "♥" : "♡"}</span>
+                  <span class="reel-rail-count" data-insta-like-cnt="${p.id}">${p.like_count}</span>
+                </button>
+                <button type="button" class="reel-rail-btn" data-reel-comments="${p.id}" title="Comments">
+                  <span class="reel-rail-circle">💬</span>
+                  <span class="reel-rail-count" data-reel-cmt-cnt="${p.id}">${p.comment_count}</span>
+                </button>
+                ${
+                  isVideo
+                    ? `<button type="button" class="reel-rail-btn" data-reel-mute="${p.id}" title="Mute / Unmute">
+                         <span class="reel-rail-circle">${instaMuted ? "🔇" : "🔊"}</span>
+                         <span class="reel-rail-count">${instaMuted ? "Muted" : "Sound"}</span>
+                       </button>`
+                    : ""
+                }
+                <button type="button" class="reel-rail-btn" data-insta-profile="${p.user_id}" title="View Profile">
+                  <span class="reel-rail-circle" style="padding:0;overflow:hidden;font-size:0.85rem;">${renderAvatar(p.author_avatar, p.author_name)}</span>
                 </button>
               </div>
-              ${
-                p.post_type === "vlog"
-                  ? `<div class="insta-caption-box">
-                       <strong>${escapeHtml(p.author_name)}</strong>
-                       ${p.title ? `<span>${escapeHtml(p.title)}${p.content ? " — " : ""}</span>` : ""}
-                       ${p.content ? `<span>${escapeHtml(p.content)}</span>` : ""}
-                     </div>`
-                  : ""
-              }
+              <div class="reel-bottom-grad">
+                <div class="reel-author-row" data-insta-profile="${p.user_id}">
+                  <div class="post-avatar" style="width:34px;height:34px;font-size:0.8rem;">${renderAvatar(p.author_avatar, p.author_name)}</div>
+                  <div>
+                    <div style="font-weight:800;font-size:0.9rem;">${escapeHtml(p.author_name)}</div>
+                    <div style="font-size:0.74rem;opacity:0.82;">${escapeHtml(p.author_class)} &bull; ${timeAgo(p.created_at)}</div>
+                  </div>
+                </div>
+                ${
+                  isVideo
+                    ? `<div class="reel-caption">
+                         ${p.title ? `<strong>${escapeHtml(p.title)}</strong>${p.content ? " — " : ""}` : ""}
+                         ${p.content ? escapeHtml(p.content) : ""}
+                       </div>`
+                    : ""
+                }
+              </div>
+              <div class="reel-comments-drawer hidden" id="reel-drawer-${p.id}">
+                <div class="reel-comments-head">
+                  <span>Comments</span>
+                  <button type="button" class="icon-btn" data-reel-drawer-close="${p.id}">&times;</button>
+                </div>
+                <div class="reel-comments-list" id="reel-cmt-list-${p.id}">
+                  <p class="muted small">Loading comments...</p>
+                </div>
+                <form class="reel-comments-form" data-reel-cmt-form="${p.id}">
+                  <input type="text" placeholder="Add a comment..." required maxlength="400" />
+                  <button type="submit" class="btn btn-primary btn-sm">Post</button>
+                </form>
+              </div>
             </article>
           `;
         })
         .join("");
+
+      // Auto-play only the reel currently snapped in view
+      instaObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            const vid = entry.target.querySelector("video[data-reel-video]");
+            if (!vid) return;
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+              vid.muted = instaMuted;
+              vid.play().catch(() => {});
+            } else {
+              vid.pause();
+            }
+          });
+        },
+        { root: feed, threshold: [0.25, 0.65] }
+      );
+      feed.querySelectorAll(".insta-reel-slide").forEach((slide) => instaObserver.observe(slide));
     } catch (err) {
-      feed.innerHTML = `<div class="empty-state"><h3>Couldn't load feed</h3><p>${escapeHtml(err.message)}</p></div>`;
+      feed.innerHTML = `<div class="empty-state"><h3>Couldn't load iSnaps</h3><p>${escapeHtml(err.message)}</p></div>`;
+    }
+  }
+
+  async function loadReelComments(postId) {
+    const list = $(`reel-cmt-list-${postId}`);
+    if (!list) return;
+    list.innerHTML = `<p class="muted small">Loading...</p>`;
+    try {
+      const data = await api(`/api/posts/${postId}/comments`, { auth: "student" });
+      const items = data.comments || [];
+      if (!items.length) {
+        list.innerHTML = `<p class="muted small">No comments yet. Be the first!</p>`;
+        return;
+      }
+      list.innerHTML = items
+        .map(
+          (c) => `
+          <div class="comment-item" style="padding:8px 10px;border-radius:10px;">
+            <div style="font-size:0.78rem;font-weight:700;">${escapeHtml(c.author_name)} <span class="muted" style="font-weight:400;">&bull; ${timeAgo(c.created_at)}</span></div>
+            <div style="font-size:0.84rem;margin-top:2px;">${escapeHtml(c.body)}</div>
+          </div>
+        `
+        )
+        .join("");
+    } catch (err) {
+      list.innerHTML = `<p class="muted small">${escapeHtml(err.message)}</p>`;
     }
   }
 
@@ -3475,7 +3551,7 @@
       const res = await api(`/api/posts/${postId}/like`, { method: "POST", auth: "student" });
       if (btn) {
         btn.classList.toggle("liked", res.liked);
-        btn.querySelector("span:first-child").textContent = res.liked ? "♥" : "♡";
+        btn.querySelector(".reel-rail-circle").textContent = res.liked ? "♥" : "♡";
         const cnt = btn.querySelector(`[data-insta-like-cnt="${postId}"]`);
         if (cnt) cnt.textContent = res.like_count;
       }
@@ -3490,6 +3566,34 @@
 
   if ($("insta-feed")) {
     $("insta-feed").addEventListener("click", (e) => {
+      const closeDrawer = e.target.closest("[data-reel-drawer-close]");
+      if (closeDrawer) {
+        const d = $(`reel-drawer-${closeDrawer.dataset.reelDrawerClose}`);
+        if (d) d.classList.add("hidden");
+        return;
+      }
+      const cmtBtn = e.target.closest("[data-reel-comments]");
+      if (cmtBtn) {
+        const pid = Number(cmtBtn.dataset.reelComments);
+        const d = $(`reel-drawer-${pid}`);
+        if (d) {
+          d.classList.toggle("hidden");
+          if (!d.classList.contains("hidden")) loadReelComments(pid);
+        }
+        return;
+      }
+      const muteBtn = e.target.closest("[data-reel-mute]");
+      if (muteBtn) {
+        instaMuted = !instaMuted;
+        $("insta-feed").querySelectorAll("video[data-reel-video]").forEach((v) => {
+          v.muted = instaMuted;
+        });
+        $("insta-feed").querySelectorAll("[data-reel-mute]").forEach((b) => {
+          b.querySelector(".reel-rail-circle").textContent = instaMuted ? "🔇" : "🔊";
+          b.querySelector(".reel-rail-count").textContent = instaMuted ? "Muted" : "Sound";
+        });
+        return;
+      }
       const prof = e.target.closest("[data-insta-profile]");
       if (prof) {
         loadUserProfile(Number(prof.dataset.instaProfile));
@@ -3498,10 +3602,36 @@
       const likeBtn = e.target.closest("[data-insta-like]");
       if (likeBtn) {
         triggerInstaLike(Number(likeBtn.dataset.instaLike), false);
+        return;
+      }
+      const vid = e.target.closest("video[data-reel-video]");
+      if (vid) {
+        if (vid.paused) vid.play().catch(() => {});
+        else vid.pause();
+      }
+    });
+
+    $("insta-feed").addEventListener("submit", async (e) => {
+      const form = e.target.closest("[data-reel-cmt-form]");
+      if (!form) return;
+      e.preventDefault();
+      const pid = Number(form.dataset.reelCmtForm);
+      const input = form.querySelector("input");
+      const body = (input.value || "").trim();
+      if (!body) return;
+      try {
+        await api(`/api/posts/${pid}/comments`, { method: "POST", auth: "student", json: { body } });
+        input.value = "";
+        const cnt = document.querySelector(`[data-reel-cmt-cnt="${pid}"]`);
+        if (cnt) cnt.textContent = String(Number(cnt.textContent || 0) + 1);
+        await loadReelComments(pid);
+      } catch (err) {
+        toast(err.message, "error");
       }
     });
 
     $("insta-feed").addEventListener("dblclick", (e) => {
+      if (e.target.closest(".reel-comments-drawer")) return;
       const media = e.target.closest("[data-insta-dbl]");
       if (!media) return;
       const postId = Number(media.dataset.instaDbl);
@@ -3514,13 +3644,19 @@
     });
   }
 
-  // ---------- Primus Tube (YouTube Cinema Videos Feed) ----------
+  // ---------- Primus Tube (YouTube Grid + Click-to-Watch YT Layout) ----------
+  let tubeVlogsCache = [];
+  let activeTubeWatchId = null;
+
   async function openTubeMode() {
     state.inChatView = false;
     state.viewingProfileId = null;
+    activeTubeWatchId = null;
     if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; }
     showOnlyStudentSection("section-tube");
     setActiveNavTab("nav-tube-btn");
+    if ($("tube-watch-view")) $("tube-watch-view").classList.add("hidden");
+    if ($("tube-feed")) $("tube-feed").classList.remove("hidden");
     await loadTubeVlogs();
   }
 
@@ -3530,6 +3666,7 @@
     try {
       const data = await api("/api/posts?post_type=vlog", { auth: "student" });
       const vlogs = data.posts || [];
+      tubeVlogsCache = vlogs;
       if (!vlogs.length) {
         grid.innerHTML = `
           <div class="empty-state" style="grid-column:1/-1;">
@@ -3544,24 +3681,26 @@
         .map(
           (v) => `
           <article class="tube-card">
-            <div class="tube-player-wrap">
-              <video src="${escapeHtml(v.media_url)}" controls playsinline preload="metadata"></video>
+            <div class="tube-player-wrap tube-thumb-clickable" data-tube-watch="${v.id}">
+              <video src="${escapeHtml(v.media_url)}" muted playsinline preload="metadata" style="pointer-events:none;"></video>
+              <div class="tube-play-overlay"><div class="tube-play-badge">▶</div></div>
             </div>
             <div class="tube-info">
               <div class="post-avatar" style="width:38px;height:38px;font-size:0.84rem;cursor:pointer;" data-tube-profile="${v.user_id}">
                 ${renderAvatar(v.author_avatar, v.author_name)}
               </div>
-              <div style="min-width:0;flex:1;">
+              <div style="min-width:0;flex:1;cursor:pointer;" data-tube-watch="${v.id}">
                 <h4 class="tube-title">${escapeHtml(v.title || "Untitled Video")}</h4>
                 <div class="tube-meta">${escapeHtml(v.author_name)} &bull; ${escapeHtml(v.author_class)} &bull; ${timeAgo(v.created_at)}</div>
-                ${v.content ? `<div class="tube-meta" style="margin-top:4px;color:#374151;">${escapeHtml(v.content)}</div>` : ""}
+                ${v.content ? `<div class="tube-meta" style="margin-top:4px;">${escapeHtml(v.content.slice(0, 90))}${v.content.length > 90 ? "…" : ""}</div>` : ""}
               </div>
             </div>
-            <div class="tube-actions">
+            <div class="tube-actions" style="display:flex;align-items:center;justify-content:space-between;">
               <button type="button" class="action-btn ${v.liked_by_me ? "liked" : ""}" data-tube-like="${v.id}">
                 <span>${v.liked_by_me ? "♥" : "♡"}</span>
                 <span data-tube-like-cnt="${v.id}">${v.like_count}</span>
               </button>
+              <button type="button" class="btn btn-ghost btn-sm" data-tube-watch="${v.id}">▶ Watch</button>
             </div>
           </article>
         `
@@ -3572,7 +3711,118 @@
     }
   }
 
+  async function loadTubeWatchComments(postId) {
+    const list = $("yt-comments-list");
+    if (!list) return;
+    list.innerHTML = `<p class="muted small">Loading comments...</p>`;
+    try {
+      const data = await api(`/api/posts/${postId}/comments`, { auth: "student" });
+      const items = data.comments || [];
+      if (!items.length) {
+        list.innerHTML = `<p class="muted small">No comments yet. Start the conversation!</p>`;
+        return;
+      }
+      list.innerHTML = items
+        .map(
+          (c) => `
+          <div class="comment-item" style="padding:10px 12px;border-radius:12px;margin-bottom:8px;">
+            <div style="font-size:0.8rem;font-weight:700;">${escapeHtml(c.author_name)} <span class="muted" style="font-weight:400;">&bull; ${timeAgo(c.created_at)}</span></div>
+            <div style="font-size:0.88rem;margin-top:3px;">${escapeHtml(c.body)}</div>
+          </div>
+        `
+        )
+        .join("");
+    } catch (err) {
+      list.innerHTML = `<p class="muted small">${escapeHtml(err.message)}</p>`;
+    }
+  }
+
+  async function openTubeWatch(postId) {
+    const watchEl = $("tube-watch-view");
+    const grid = $("tube-feed");
+    if (!watchEl || !grid) return;
+    const v = tubeVlogsCache.find((x) => Number(x.id) === Number(postId));
+    if (!v) return;
+
+    activeTubeWatchId = Number(postId);
+    grid.classList.add("hidden");
+    watchEl.classList.remove("hidden");
+
+    const upNextHtml = tubeVlogsCache
+      .map(
+        (item) => `
+        <div class="yt-next-item ${Number(item.id) === activeTubeWatchId ? "active-watch" : ""}" data-tube-watch="${item.id}">
+          <div class="yt-next-thumb">
+            <video src="${escapeHtml(item.media_url)}" muted playsinline preload="metadata"></video>
+          </div>
+          <div style="min-width:0;">
+            <div class="yt-next-title">${escapeHtml(item.title || "Untitled Video")}</div>
+            <div class="yt-next-meta">${escapeHtml(item.author_name)}</div>
+            <div class="yt-next-meta">${timeAgo(item.created_at)} &bull; ♥ ${item.like_count}</div>
+          </div>
+        </div>
+      `
+      )
+      .join("");
+
+    watchEl.innerHTML = `
+      <div style="margin-bottom:12px;">
+        <button type="button" class="btn btn-secondary btn-sm" id="yt-back-to-grid-btn">&larr; Back to All iTube Videos</button>
+      </div>
+      <div class="yt-watch-grid">
+        <div class="yt-watch-main">
+          <div class="yt-player-frame">
+            <video src="${escapeHtml(v.media_url)}" controls autoplay playsinline></video>
+          </div>
+          <h2 class="yt-watch-title">${escapeHtml(v.title || "Untitled Video")}</h2>
+          <div class="yt-channel-bar">
+            <div style="display:flex;align-items:center;gap:10px;cursor:pointer;" data-tube-profile="${v.user_id}">
+              <div class="post-avatar" style="width:42px;height:42px;font-size:0.9rem;">${renderAvatar(v.author_avatar, v.author_name)}</div>
+              <div>
+                <div style="font-weight:800;font-size:0.94rem;">${escapeHtml(v.author_name)}</div>
+                <div class="muted small">${escapeHtml(v.author_class)} &bull; ${timeAgo(v.created_at)}</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button type="button" class="action-btn ${v.liked_by_me ? "liked" : ""}" data-tube-like="${v.id}">
+                <span>${v.liked_by_me ? "♥" : "♡"}</span>
+                <span data-tube-like-cnt="${v.id}">${v.like_count}</span>
+              </button>
+              <span class="hub-badge">💬 <span id="yt-cmt-count">${v.comment_count}</span></span>
+            </div>
+          </div>
+          ${v.content ? `<div class="yt-desc-box">${escapeHtml(v.content)}</div>` : ""}
+          <div class="yt-comments-box">
+            <h3 style="margin:0 0 12px;font-size:0.95rem;">Comments</h3>
+            <form id="yt-comment-form" style="display:flex;gap:8px;margin-bottom:14px;">
+              <input id="yt-comment-input" type="text" placeholder="Add a comment..." required maxlength="400" style="flex:1;border-radius:999px;padding:9px 14px;" />
+              <button type="submit" class="btn btn-primary btn-sm">Comment</button>
+            </form>
+            <div id="yt-comments-list"></div>
+          </div>
+        </div>
+        <aside class="yt-up-next">
+          <h3>Up Next (${tubeVlogsCache.length})</h3>
+          <div class="yt-next-list">${upNextHtml}</div>
+        </aside>
+      </div>
+    `;
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    await loadTubeWatchComments(v.id);
+  }
+
   async function handleTubeClick(e) {
+    const backBtn = e.target.closest("#yt-back-to-grid-btn");
+    if (backBtn) {
+      activeTubeWatchId = null;
+      if ($("tube-watch-view")) {
+        $("tube-watch-view").innerHTML = "";
+        $("tube-watch-view").classList.add("hidden");
+      }
+      if ($("tube-feed")) $("tube-feed").classList.remove("hidden");
+      return;
+    }
     const prof = e.target.closest("[data-tube-profile]");
     if (prof) {
       loadUserProfile(Number(prof.dataset.tubeProfile));
@@ -3583,6 +3833,11 @@
       const postId = Number(likeBtn.dataset.tubeLike);
       try {
         const res = await api(`/api/posts/${postId}/like`, { method: "POST", auth: "student" });
+        const cached = tubeVlogsCache.find((x) => Number(x.id) === postId);
+        if (cached) {
+          cached.liked_by_me = res.liked;
+          cached.like_count = res.like_count;
+        }
         document.querySelectorAll(`[data-tube-like="${postId}"]`).forEach((b) => {
           b.classList.toggle("liked", res.liked);
           b.querySelector("span:first-child").textContent = res.liked ? "♥" : "♡";
@@ -3592,6 +3847,11 @@
       } catch (err) {
         toast(err.message, "error");
       }
+      return;
+    }
+    const watchBtn = e.target.closest("[data-tube-watch]");
+    if (watchBtn) {
+      openTubeWatch(Number(watchBtn.dataset.tubeWatch));
     }
   }
 
@@ -3599,6 +3859,26 @@
   if ($("tube-back-home-btn")) $("tube-back-home-btn").addEventListener("click", showFeedMode);
   if ($("tube-upload-vlog-btn")) $("tube-upload-vlog-btn").addEventListener("click", () => openComposer("vlog"));
   if ($("tube-feed")) $("tube-feed").addEventListener("click", handleTubeClick);
+  if ($("tube-watch-view")) {
+    $("tube-watch-view").addEventListener("click", handleTubeClick);
+    $("tube-watch-view").addEventListener("submit", async (e) => {
+      if (e.target.id !== "yt-comment-form" || !activeTubeWatchId) return;
+      e.preventDefault();
+      const input = $("yt-comment-input");
+      const body = (input && input.value ? input.value : "").trim();
+      if (!body) return;
+      try {
+        await api(`/api/posts/${activeTubeWatchId}/comments`, { method: "POST", auth: "student", json: { body } });
+        input.value = "";
+        const cached = tubeVlogsCache.find((x) => Number(x.id) === activeTubeWatchId);
+        if (cached) cached.comment_count = (cached.comment_count || 0) + 1;
+        if ($("yt-cmt-count") && cached) $("yt-cmt-count").textContent = String(cached.comment_count);
+        await loadTubeWatchComments(activeTubeWatchId);
+      } catch (err) {
+        toast(err.message, "error");
+      }
+    });
+  }
 
   // ---------- Campus TV Showcase (iCarly-Style Featured Screen) ----------
   let tvIndex = 0;
