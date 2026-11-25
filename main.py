@@ -64,6 +64,9 @@ def init_db() -> None:
         conn = get_db()
         try:
             conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_message TEXT NOT NULL DEFAULT ''")
+            conn.execute("ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_hidden INTEGER NOT NULL DEFAULT 0")
+            conn.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS is_hidden INTEGER NOT NULL DEFAULT 0")
+            conn.execute("ALTER TABLE flashes ADD COLUMN IF NOT EXISTS is_hidden INTEGER NOT NULL DEFAULT 0")
             conn.commit()
         except Exception:
             pass
@@ -295,6 +298,12 @@ def init_db() -> None:
         conn.execute("ALTER TABLE stories ADD COLUMN audience TEXT NOT NULL DEFAULT 'all'")
     if "reposted_from" not in st_cols:
         conn.execute("ALTER TABLE stories ADD COLUMN reposted_from TEXT NOT NULL DEFAULT ''")
+    if "is_hidden" not in st_cols:
+        conn.execute("ALTER TABLE stories ADD COLUMN is_hidden INTEGER NOT NULL DEFAULT 0")
+
+    fl_cols = [r["name"] for r in conn.execute("PRAGMA table_info(flashes)").fetchall()]
+    if "is_hidden" not in fl_cols:
+        conn.execute("ALTER TABLE flashes ADD COLUMN is_hidden INTEGER NOT NULL DEFAULT 0")
 
     nt_cols = [r["name"] for r in conn.execute("PRAGMA table_info(notices)").fetchall()]
     if "target_class" not in nt_cols:
@@ -303,6 +312,8 @@ def init_db() -> None:
     p_cols = [r["name"] for r in conn.execute("PRAGMA table_info(posts)").fetchall()]
     if "audience" not in p_cols:
         conn.execute("ALTER TABLE posts ADD COLUMN audience TEXT NOT NULL DEFAULT 'all'")
+    if "is_hidden" not in p_cols:
+        conn.execute("ALTER TABLE posts ADD COLUMN is_hidden INTEGER NOT NULL DEFAULT 0")
 
     # Seed one welcome notice if empty so the Notice Board is visible right away
     notice_count = conn.execute("SELECT COUNT(*) FROM notices").fetchone()[0]
@@ -472,6 +483,10 @@ class BanRequest(BaseModel):
     ban_message: str = ""
 
 
+class HideRequest(BaseModel):
+    is_hidden: bool
+
+
 # ---------- Auth Helpers ----------
 
 def require_approved_user(x_session_token: Optional[str] = Header(default=None)):
@@ -594,6 +609,7 @@ def serialize_post(conn: Any, row: Any, current_user_id: Optional[int] = None) -
         "author_title": author_lv["title"],
         "post_type": row["post_type"],
         "audience": row["audience"] if "audience" in row.keys() else "all",
+        "is_hidden": bool(row["is_hidden"]) if "is_hidden" in row.keys() else False,
         "title": row["title"],
         "content": row["content"],
         "media_url": row["media_url"],
@@ -996,7 +1012,8 @@ def list_posts(
             SELECT p.*, u.name AS author_name, u.reg_number AS author_reg_number, u.class_name AS author_class
             FROM posts p
             JOIN users u ON u.id = p.user_id
-            WHERE (
+            WHERE COALESCE(p.is_hidden, 0) = 0
+              AND (
                 COALESCE(p.audience, 'all') = 'all'
                 OR p.user_id = ?
                 OR EXISTS (
@@ -1249,6 +1266,7 @@ def get_user_profile(user_id: int, user=Depends(require_approved_user)):
             FROM posts p
             JOIN users u ON u.id = p.user_id
             WHERE p.user_id = ?
+              AND COALESCE(p.is_hidden, 0) = 0
               AND (
                 COALESCE(p.audience, 'all') = 'all'
                 OR p.user_id = ?
@@ -1380,6 +1398,7 @@ def list_stories(user=Depends(require_approved_user)):
             FROM stories st
             JOIN users u ON u.id = st.user_id
             WHERE st.expires_at > ?
+              AND COALESCE(st.is_hidden, 0) = 0
               AND (
                 st.audience = 'all'
                 OR st.user_id = ?
@@ -1524,6 +1543,7 @@ def list_flashes(user=Depends(require_approved_user)):
             FROM flashes f
             JOIN users u ON u.id = f.user_id
             WHERE f.expires_at > ?
+              AND COALESCE(f.is_hidden, 0) = 0
               AND (
                 f.audience = 'all'
                 OR f.user_id = ?
@@ -2336,10 +2356,38 @@ def admin_overview(_=Depends(require_admin)):
                 "created_at": pr["created_at"],
             })
 
+        stories_rows = conn.execute(
+            """
+            SELECT st.id, st.user_id, st.story_type, st.caption, st.media_url, st.audience,
+                   COALESCE(st.is_hidden, 0) AS is_hidden, st.created_at, st.expires_at,
+                   COALESCE(NULLIF(u.display_name, ''), u.name) AS author_name,
+                   u.reg_number AS author_reg_number, u.class_name AS author_class
+            FROM stories st
+            JOIN users u ON u.id = st.user_id
+            ORDER BY st.created_at DESC
+            LIMIT 60
+            """
+        ).fetchall()
+
+        flashes_rows = conn.execute(
+            """
+            SELECT f.id, f.user_id, f.text, f.media_url, f.audience,
+                   COALESCE(f.is_hidden, 0) AS is_hidden, f.created_at, f.expires_at,
+                   COALESCE(NULLIF(u.display_name, ''), u.name) AS author_name,
+                   u.reg_number AS author_reg_number, u.class_name AS author_class
+            FROM flashes f
+            JOIN users u ON u.id = f.user_id
+            ORDER BY f.created_at DESC
+            LIMIT 60
+            """
+        ).fetchall()
+
         return {
             "sessions": [dict(s) for s in sessions],
             "users": [dict(u) for u in users],
             "posts": [serialize_post(conn, r, None) for r in posts_rows],
+            "stories": [dict(st) for st in stories_rows],
+            "flashes": [dict(fl) for fl in flashes_rows],
             "notices": [dict(n) for n in notices_rows],
             "classes": [c["class_name"] for c in class_rows],
             "polls": polls_out,
@@ -2651,6 +2699,81 @@ def admin_remove_user(user_id: int, _=Depends(require_admin)):
     for url in media_urls:
         _cleanup_media_file(url)
     return {"ok": True, "deleted_user_id": user_id}
+
+
+@app.post("/api/admin/posts/{post_id}/hide")
+def admin_toggle_hide_post(post_id: int, payload: HideRequest, _=Depends(require_admin)):
+    conn = get_db()
+    try:
+        row = conn.execute("SELECT id FROM posts WHERE id = ?", (post_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Post not found.")
+        val = 1 if payload.is_hidden else 0
+        conn.execute("UPDATE posts SET is_hidden = ? WHERE id = ?", (val, post_id))
+        conn.commit()
+        return {"ok": True, "is_hidden": payload.is_hidden}
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/stories/{story_id}/hide")
+def admin_toggle_hide_story(story_id: int, payload: HideRequest, _=Depends(require_admin)):
+    conn = get_db()
+    try:
+        row = conn.execute("SELECT id FROM stories WHERE id = ?", (story_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Story not found.")
+        val = 1 if payload.is_hidden else 0
+        conn.execute("UPDATE stories SET is_hidden = ? WHERE id = ?", (val, story_id))
+        conn.commit()
+        return {"ok": True, "is_hidden": payload.is_hidden}
+    finally:
+        conn.close()
+
+
+@app.delete("/api/admin/stories/{story_id}")
+def admin_delete_story(story_id: int, _=Depends(require_admin)):
+    conn = get_db()
+    try:
+        row = conn.execute("SELECT id, media_url FROM stories WHERE id = ?", (story_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Story not found.")
+        conn.execute("DELETE FROM stories WHERE id = ?", (story_id,))
+        conn.commit()
+        _cleanup_media_file(row["media_url"])
+        return {"ok": True}
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/flashes/{flash_id}/hide")
+def admin_toggle_hide_flash(flash_id: int, payload: HideRequest, _=Depends(require_admin)):
+    conn = get_db()
+    try:
+        row = conn.execute("SELECT id FROM flashes WHERE id = ?", (flash_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Flash not found.")
+        val = 1 if payload.is_hidden else 0
+        conn.execute("UPDATE flashes SET is_hidden = ? WHERE id = ?", (val, flash_id))
+        conn.commit()
+        return {"ok": True, "is_hidden": payload.is_hidden}
+    finally:
+        conn.close()
+
+
+@app.delete("/api/admin/flashes/{flash_id}")
+def admin_delete_flash(flash_id: int, _=Depends(require_admin)):
+    conn = get_db()
+    try:
+        row = conn.execute("SELECT id, media_url FROM flashes WHERE id = ?", (flash_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Flash not found.")
+        conn.execute("DELETE FROM flashes WHERE id = ?", (flash_id,))
+        conn.commit()
+        _cleanup_media_file(row["media_url"])
+        return {"ok": True}
+    finally:
+        conn.close()
 
 
 @app.delete("/api/admin/posts/{post_id}")
